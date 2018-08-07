@@ -1,5 +1,5 @@
-hash: 2816d9c6b47ce14fb720a01ad2459d72931332e5381920874afb7353e7f079b6
-updated: 2018-07-31T18:48:59.259161708-07:00
+hash: 02d6e66d34b2ce95789f7072e09e0454b28b6ea803f2786e6d73b71f46edceaa
+updated: 2018-08-06T18:04:13.01170011-07:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
@@ -36,6 +36,8 @@ imports:
   repo: https://github.com/nullstyle/go-xdr
   subpackages:
   - xdr3
+- name: github.com/op/go-logging
+  version: 970db520ece77730c7e4724c61121037378659d9
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pmezard/go-difflib

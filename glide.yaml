@@ -15,3 +15,5 @@ import:
   - clients/horizon
   - support/config
   - support/errors
+- package: github.com/op/go-logging
+  version: 970db520ece77730c7e4724c61121037378659d9
