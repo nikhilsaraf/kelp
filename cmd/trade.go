@@ -9,6 +9,7 @@ import (
 	"github.com/lightyeario/kelp/plugins"
 	"github.com/lightyeario/kelp/support/utils"
 	"github.com/lightyeario/kelp/trader"
+	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/config"
@@ -54,6 +55,12 @@ func init() {
 	tradeCmd.Flags().SortFlags = false
 
 	tradeCmd.Run = func(ccmd *cobra.Command, args []string) {
+		log2 := logging.MustGetLogger("kelp")
+		logging.SetFormatter(logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`))
+
+		log2.Info("info")
+		log2.Error("some error")
+
 		startupMessage := "Starting Kelp Trader: v0.6"
 		if *simMode {
 			startupMessage += " (simulation mode)"
