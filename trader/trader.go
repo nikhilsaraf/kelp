@@ -151,9 +151,15 @@ func (t *Trader) update() {
 		t.deleteAllOffers()
 		return
 	}
+	t.prependHistory()
+}
 
-	// prepend current state to history here
+// prependHistory prepends current state to history
+func (t *Trader) prependHistory() {
 	t.history = []api.State{t.currentState}
-	t.history = append(t.history, t.history[:t.strat.MaxHistory()-1]...)
+	t.history = append(t.history, t.history...)
+	if t.strat.MaxHistory() > int64(len(t.history)) {
+		t.history = t.history[:t.strat.MaxHistory()]
+	}
 	t.currentState = nil
 }

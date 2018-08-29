@@ -38,14 +38,13 @@ func MakeBasicState(
 	assetBase horizon.Asset,
 	assetQuote horizon.Asset,
 	tradingAccount string,
-) (api.State, error) {
-	s := &basicState{
+) api.State {
+	return &basicState{
 		api:            api,
 		assetBase:      assetBase,
 		assetQuote:     assetQuote,
 		tradingAccount: tradingAccount,
 	}
-	return s, nil
 }
 
 var _ api.State = &basicState{}

@@ -55,6 +55,14 @@ func makeMirrorStrategy(sdex *SDEX, baseAsset *horizon.Asset, quoteAsset *horizo
 	}
 }
 
+func (s *mirrorStrategy) InitializeState(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State {
+	return MakeBasicState(api, assetBase, assetQuote, tradingAccount)
+}
+
+func (s *mirrorStrategy) MaxHistory() int64 {
+	return 0
+}
+
 // PruneExistingOffers deletes any extra offers
 func (s mirrorStrategy) PruneExistingOffers(history []api.State, currentState api.State, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
 	return []build.TransactionMutator{}, buyingAOffers, sellingAOffers
