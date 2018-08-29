@@ -39,19 +39,19 @@ func makeComposeStrategy(
 }
 
 // PruneExistingOffers impl
-func (s *composeStrategy) PruneExistingOffers(buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
-	pruneOps1, newBuyingAOffers := s.buyStrat.PruneExistingOffers(buyingAOffers)
-	pruneOps2, newSellingAOffers := s.sellStrat.PruneExistingOffers(sellingAOffers)
+func (s *composeStrategy) PruneExistingOffers(history []api.State, currentState api.State, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
+	pruneOps1, newBuyingAOffers := s.buyStrat.PruneExistingOffers(history, currentState, buyingAOffers)
+	pruneOps2, newSellingAOffers := s.sellStrat.PruneExistingOffers(history, currentState, sellingAOffers)
 	pruneOps1 = append(pruneOps1, pruneOps2...)
 	return pruneOps1, newBuyingAOffers, newSellingAOffers
 }
 
 // PreUpdate impl
-func (s *composeStrategy) PreUpdate(maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *composeStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
 	// swap assets (base/quote) for buying strategy
-	e1 := s.buyStrat.PreUpdate(maxAssetQuote, maxAssetBase, trustQuote, trustBase, buyingAOffers, sellingAOffers)
+	e1 := s.buyStrat.PreUpdate(history, currentState, maxAssetQuote, maxAssetBase, trustQuote, trustBase, buyingAOffers, sellingAOffers)
 	// assets maintain same ordering for selling
-	e2 := s.sellStrat.PreUpdate(maxAssetBase, maxAssetQuote, trustBase, trustQuote, buyingAOffers, sellingAOffers)
+	e2 := s.sellStrat.PreUpdate(history, currentState, maxAssetBase, maxAssetQuote, trustBase, trustQuote, buyingAOffers, sellingAOffers)
 
 	if e1 == nil && e2 == nil {
 		return nil
@@ -69,14 +69,16 @@ func (s *composeStrategy) PreUpdate(maxAssetBase float64, maxAssetQuote float64,
 
 // UpdateWithOps impl
 func (s *composeStrategy) UpdateWithOps(
+	history []api.State,
+	currentState api.State,
 	buyingAOffers []horizon.Offer,
 	sellingAOffers []horizon.Offer,
 ) ([]build.TransactionMutator, error) {
 	// buy side, flip newTopBuyPrice because it will be inverted from this parent strategy's context of base/quote
-	buyOps, newTopBuyPriceInverted, e1 := s.buyStrat.UpdateWithOps(buyingAOffers)
+	buyOps, newTopBuyPriceInverted, e1 := s.buyStrat.UpdateWithOps(history, currentState, buyingAOffers)
 	newTopBuyPrice := model.InvertNumber(newTopBuyPriceInverted)
 	// sell side
-	sellOps, _, e2 := s.sellStrat.UpdateWithOps(sellingAOffers)
+	sellOps, _, e2 := s.sellStrat.UpdateWithOps(history, currentState, sellingAOffers)
 
 	// check for errors
 	ops := []build.TransactionMutator{}
@@ -100,6 +102,6 @@ func (s *composeStrategy) UpdateWithOps(
 }
 
 // PostUpdate impl
-func (s *composeStrategy) PostUpdate() error {
+func (s *composeStrategy) PostUpdate(history []api.State, currentState api.State) error {
 	return nil
 }

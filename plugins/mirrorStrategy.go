@@ -56,17 +56,19 @@ func makeMirrorStrategy(sdex *SDEX, baseAsset *horizon.Asset, quoteAsset *horizo
 }
 
 // PruneExistingOffers deletes any extra offers
-func (s mirrorStrategy) PruneExistingOffers(buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
+func (s mirrorStrategy) PruneExistingOffers(history []api.State, currentState api.State, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
 	return []build.TransactionMutator{}, buyingAOffers, sellingAOffers
 }
 
 // PreUpdate changes the strategy's state in prepration for the update
-func (s *mirrorStrategy) PreUpdate(maxAssetA float64, maxAssetB float64, trustA float64, trustB float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *mirrorStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetA float64, maxAssetB float64, trustA float64, trustB float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
 	return nil
 }
 
 // UpdateWithOps builds the operations we want performed on the account
 func (s mirrorStrategy) UpdateWithOps(
+	history []api.State,
+	currentState api.State,
 	buyingAOffers []horizon.Offer,
 	sellingAOffers []horizon.Offer,
 ) ([]build.TransactionMutator, error) {
@@ -184,6 +186,6 @@ func doModifyOffer(
 }
 
 // PostUpdate changes the strategy's state after the update has taken place
-func (s *mirrorStrategy) PostUpdate() error {
+func (s *mirrorStrategy) PostUpdate(history []api.State, currentState api.State) error {
 	return nil
 }

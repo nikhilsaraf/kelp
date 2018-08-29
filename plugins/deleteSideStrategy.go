@@ -33,7 +33,7 @@ func makeDeleteSideStrategy(
 }
 
 // PruneExistingOffers impl
-func (s *deleteSideStrategy) PruneExistingOffers(offers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer) {
+func (s *deleteSideStrategy) PruneExistingOffers(history []api.State, currentState api.State, offers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer) {
 	log.Printf("deleteSideStrategy: deleting %d offers\n", len(offers))
 	pruneOps := []build.TransactionMutator{}
 	for i := 0; i < len(offers); i++ {
@@ -44,16 +44,16 @@ func (s *deleteSideStrategy) PruneExistingOffers(offers []horizon.Offer) ([]buil
 }
 
 // PreUpdate impl
-func (s *deleteSideStrategy) PreUpdate(maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *deleteSideStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
 	return nil
 }
 
 // UpdateWithOps impl
-func (s *deleteSideStrategy) UpdateWithOps(offers []horizon.Offer) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
+func (s *deleteSideStrategy) UpdateWithOps(history []api.State, currentState api.State, offers []horizon.Offer) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
 	return []build.TransactionMutator{}, nil, nil
 }
 
 // PostUpdate impl
-func (s *deleteSideStrategy) PostUpdate() error {
+func (s *deleteSideStrategy) PostUpdate(history []api.State, currentState api.State) error {
 	return nil
 }

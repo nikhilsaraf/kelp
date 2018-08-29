@@ -27,6 +27,9 @@ type Trader struct {
 	dataKey             *model.BotKey
 
 	// uninitialized
+	history      []api.State
+	currentState api.State
+
 	maxAssetA      float64
 	maxAssetB      float64
 	trustAssetA    float64
@@ -60,6 +63,9 @@ func MakeBot(
 
 // Start starts the bot with the injected strategy
 func (t *Trader) Start() {
+	t.history = []api.State{}
+	t.currentState = t.strat.InitializeState(t.api, t.assetBase, t.assetQuote, t.tradingAccount)
+
 	for {
 		log.Println("----------------------------------------------------------------------------------------------------")
 		t.update()
@@ -94,7 +100,7 @@ func (t *Trader) update() {
 	t.loadExistingOffers()
 
 	// strategy has a chance to set any state it needs
-	e = t.strat.PreUpdate(t.maxAssetA, t.maxAssetB, t.trustAssetA, t.trustAssetB, t.buyingAOffers, t.sellingAOffers)
+	e = t.strat.PreUpdate(t.history, t.currentState, t.maxAssetA, t.maxAssetB, t.trustAssetA, t.trustAssetB, t.buyingAOffers, t.sellingAOffers)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers()
@@ -103,7 +109,7 @@ func (t *Trader) update() {
 
 	// delete excess offers
 	var pruneOps []build.TransactionMutator
-	pruneOps, t.buyingAOffers, t.sellingAOffers = t.strat.PruneExistingOffers(t.buyingAOffers, t.sellingAOffers)
+	pruneOps, t.buyingAOffers, t.sellingAOffers = t.strat.PruneExistingOffers(t.history, t.currentState, t.buyingAOffers, t.sellingAOffers)
 	log.Printf("created %d operations to prune excess offers\n", len(pruneOps))
 	if len(pruneOps) > 0 {
 		e = t.sdex.SubmitOps(pruneOps)
@@ -117,7 +123,7 @@ func (t *Trader) update() {
 	// reset cached xlm exposure here so we only compute it once per update
 	// TODO 2 - calculate this here and pass it in
 	t.sdex.ResetCachedXlmExposure()
-	ops, e := t.strat.UpdateWithOps(t.buyingAOffers, t.sellingAOffers)
+	ops, e := t.strat.UpdateWithOps(t.history, t.currentState, t.buyingAOffers, t.sellingAOffers)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers()
@@ -134,7 +140,7 @@ func (t *Trader) update() {
 		}
 	}
 
-	e = t.strat.PostUpdate()
+	e = t.strat.PostUpdate(t.history, t.currentState)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers()

@@ -52,7 +52,7 @@ func makeSellSideStrategy(
 }
 
 // PruneExistingOffers impl
-func (s *sellSideStrategy) PruneExistingOffers(offers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer) {
+func (s *sellSideStrategy) PruneExistingOffers(history []api.State, currentState api.State, offers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer) {
 	pruneOps := []build.TransactionMutator{}
 	for i := len(s.currentLevels); i < len(offers); i++ {
 		pOp := s.sdex.DeleteOffer(offers[i])
@@ -65,7 +65,7 @@ func (s *sellSideStrategy) PruneExistingOffers(offers []horizon.Offer) ([]build.
 }
 
 // PreUpdate impl
-func (s *sellSideStrategy) PreUpdate(maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *sellSideStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
 	s.maxAssetBase = maxAssetBase
 	s.maxAssetQuote = maxAssetQuote
 
@@ -89,7 +89,7 @@ func (s *sellSideStrategy) PreUpdate(maxAssetBase float64, maxAssetQuote float64
 }
 
 // UpdateWithOps impl
-func (s *sellSideStrategy) UpdateWithOps(offers []horizon.Offer) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
+func (s *sellSideStrategy) UpdateWithOps(history []api.State, currentState api.State, offers []horizon.Offer) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
 	newTopOffer = nil
 	for i := len(s.currentLevels) - 1; i >= 0; i-- {
 		op := s.updateSellLevel(offers, i)
@@ -111,7 +111,7 @@ func (s *sellSideStrategy) UpdateWithOps(offers []horizon.Offer) (ops []build.Tr
 }
 
 // PostUpdate impl
-func (s *sellSideStrategy) PostUpdate() error {
+func (s *sellSideStrategy) PostUpdate(history []api.State, currentState api.State) error {
 	return nil
 }
 
