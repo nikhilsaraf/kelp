@@ -25,13 +25,6 @@ type Trader struct {
 	// uninitialized
 	history      []api.State
 	currentState api.State
-
-	maxAssetA      float64
-	maxAssetB      float64
-	trustAssetA    float64
-	trustAssetB    float64
-	buyingAOffers  []horizon.Offer // quoted A/B
-	sellingAOffers []horizon.Offer // quoted B/A
 }
 
 // MakeBot is the factory method for the Trader struct
@@ -72,6 +65,7 @@ func (t *Trader) Start() {
 func (t *Trader) deleteAllOffers() {
 	dOps := []build.TransactionMutator{}
 
+	// TODO maybe trader should take in basicState, which in turn takes in additionalState (api.State) in the data struct
 	dOps = append(dOps, t.sdex.DeleteAllOffers(t.sellingAOffers)...)
 	t.sellingAOffers = []horizon.Offer{}
 	dOps = append(dOps, t.sdex.DeleteAllOffers(t.buyingAOffers)...)
@@ -98,6 +92,7 @@ func (t *Trader) update() {
 		return
 	}
 
+	// TODO these should not send all this data anymore, just state data is enough now\
 	// strategy has a chance to set any state it needs
 	e = t.strat.PreUpdate(t.history, t.currentState, t.maxAssetA, t.maxAssetB, t.trustAssetA, t.trustAssetB, t.buyingAOffers, t.sellingAOffers)
 	if e != nil {
@@ -108,6 +103,7 @@ func (t *Trader) update() {
 
 	// delete excess offers
 	var pruneOps []build.TransactionMutator
+	// TODO these should not send all this data anymore, just state data is enough now\
 	pruneOps, t.buyingAOffers, t.sellingAOffers = t.strat.PruneExistingOffers(t.history, t.currentState, t.buyingAOffers, t.sellingAOffers)
 	log.Printf("created %d operations to prune excess offers\n", len(pruneOps))
 	if len(pruneOps) > 0 {
@@ -122,6 +118,7 @@ func (t *Trader) update() {
 	// reset cached xlm exposure here so we only compute it once per update
 	// TODO 2 - calculate this here and pass it in
 	t.sdex.ResetCachedXlmExposure()
+	// TODO these should not send all this data anymore, just state data is enough now\
 	ops, e := t.strat.UpdateWithOps(t.history, t.currentState, t.buyingAOffers, t.sellingAOffers)
 	if e != nil {
 		log.Println(e)
