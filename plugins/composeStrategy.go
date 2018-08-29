@@ -14,10 +14,12 @@ import (
 
 // composeStrategy is a strategy that is composed of two sub-strategies
 type composeStrategy struct {
-	assetBase  *horizon.Asset
-	assetQuote *horizon.Asset
-	buyStrat   api.SideStrategy
-	sellStrat  api.SideStrategy
+	initialStateFn func(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State
+	maxHistory     int64
+	assetBase      *horizon.Asset
+	assetQuote     *horizon.Asset
+	buyStrat       api.SideStrategy
+	sellStrat      api.SideStrategy
 }
 
 // ensure it implements Strategy
@@ -25,17 +27,29 @@ var _ api.Strategy = &composeStrategy{}
 
 // makeComposeStrategy is a factory method for composeStrategy
 func makeComposeStrategy(
+	initialStateFn func(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State,
+	maxHistory int64,
 	assetBase *horizon.Asset,
 	assetQuote *horizon.Asset,
 	buyStrat api.SideStrategy,
 	sellStrat api.SideStrategy,
 ) api.Strategy {
 	return &composeStrategy{
-		assetBase:  assetBase,
-		assetQuote: assetQuote,
-		buyStrat:   buyStrat,
-		sellStrat:  sellStrat,
+		initialStateFn: initialStateFn,
+		maxHistory:     maxHistory,
+		assetBase:      assetBase,
+		assetQuote:     assetQuote,
+		buyStrat:       buyStrat,
+		sellStrat:      sellStrat,
 	}
+}
+
+func (s *composeStrategy) InitializeState(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State {
+	return s.initialStateFn(api, assetBase, assetQuote, tradingAccount)
+}
+
+func (s *composeStrategy) MaxHistory() int64 {
+	return s.maxHistory
 }
 
 // PruneExistingOffers impl
