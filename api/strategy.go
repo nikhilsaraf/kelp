@@ -26,6 +26,6 @@ type SideStrategy interface {
 
 // State is an interface that manages data to be stored between update cycles
 type State interface {
-	PreUpdate()
-	PostUpdate()
+	PreUpdate() error
+	PostUpdate() error
 }

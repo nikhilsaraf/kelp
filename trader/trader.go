@@ -2,18 +2,14 @@ package trader
 
 import (
 	"log"
-	"sort"
 	"time"
 
 	"github.com/lightyeario/kelp/api"
 	"github.com/lightyeario/kelp/model"
 	"github.com/lightyeario/kelp/plugins"
-	"github.com/lightyeario/kelp/support/utils"
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
 )
-
-const maxLumenTrust float64 = 100000000000
 
 // Trader represents a market making bot, which is composed of various parts include the strategy and various APIs.
 type Trader struct {
@@ -64,8 +60,6 @@ func MakeBot(
 // Start starts the bot with the injected strategy
 func (t *Trader) Start() {
 	t.history = []api.State{}
-	t.currentState = t.strat.InitializeState(t.api, t.assetBase, t.assetQuote, t.tradingAccount)
-
 	for {
 		log.Println("----------------------------------------------------------------------------------------------------")
 		t.update()
@@ -95,9 +89,14 @@ func (t *Trader) deleteAllOffers() {
 
 // time to update the order book and possibly readjust the offers
 func (t *Trader) update() {
-	var e error
-	t.load()
-	t.loadExistingOffers()
+	t.currentState = t.strat.InitializeState(t.api, t.assetBase, t.assetQuote, t.tradingAccount)
+
+	e := t.currentState.PreUpdate()
+	if e != nil {
+		log.Println(e)
+		t.deleteAllOffers()
+		return
+	}
 
 	// strategy has a chance to set any state it needs
 	e = t.strat.PreUpdate(t.history, t.currentState, t.maxAssetA, t.maxAssetB, t.trustAssetA, t.trustAssetB, t.buyingAOffers, t.sellingAOffers)
@@ -140,59 +139,21 @@ func (t *Trader) update() {
 		}
 	}
 
+	e = t.currentState.PostUpdate()
+	if e != nil {
+		log.Println(e)
+		t.deleteAllOffers()
+		return
+	}
 	e = t.strat.PostUpdate(t.history, t.currentState)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers()
 		return
 	}
-}
 
-func (t *Trader) load() {
-	// load the maximum amounts we can offer for each asset
-	account, e := t.api.LoadAccount(t.tradingAccount)
-	if e != nil {
-		log.Println(e)
-		return
-	}
-
-	var maxA float64
-	var maxB float64
-	var trustA float64
-	var trustB float64
-	for _, balance := range account.Balances {
-		if utils.AssetsEqual(balance.Asset, t.assetBase) {
-			maxA = utils.AmountStringAsFloat(balance.Balance)
-			if balance.Asset.Type == utils.Native {
-				trustA = maxLumenTrust
-			} else {
-				trustA = utils.AmountStringAsFloat(balance.Limit)
-			}
-			log.Printf("maxA=%.7f,trustA=%.7f\n", maxA, trustA)
-		} else if utils.AssetsEqual(balance.Asset, t.assetQuote) {
-			maxB = utils.AmountStringAsFloat(balance.Balance)
-			if balance.Asset.Type == utils.Native {
-				trustB = maxLumenTrust
-			} else {
-				trustB = utils.AmountStringAsFloat(balance.Limit)
-			}
-			log.Printf("maxB=%.7f,trustB=%.7f\n", maxB, trustB)
-		}
-	}
-	t.maxAssetA = maxA
-	t.maxAssetB = maxB
-	t.trustAssetA = trustA
-	t.trustAssetB = trustB
-}
-
-func (t *Trader) loadExistingOffers() {
-	offers, e := utils.LoadAllOffers(t.tradingAccount, t.api)
-	if e != nil {
-		log.Println(e)
-		return
-	}
-	t.sellingAOffers, t.buyingAOffers = utils.FilterOffers(offers, t.assetBase, t.assetQuote)
-
-	sort.Sort(utils.ByPrice(t.buyingAOffers))
-	sort.Sort(utils.ByPrice(t.sellingAOffers)) // don't need to reverse since the prices are inverse
+	// prepend current state to history here
+	t.history = []api.State{t.currentState}
+	t.history = append(t.history, t.history[:t.strat.MaxHistory()-1]...)
+	t.currentState = nil
 }
