@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/lightyeario/kelp/model"
 	"github.com/lightyeario/kelp/plugins"
 	"github.com/lightyeario/kelp/support/utils"
 	"github.com/lightyeario/kelp/trader"
@@ -91,7 +90,6 @@ func init() {
 
 		assetBase := botConfig.AssetBase()
 		assetQuote := botConfig.AssetQuote()
-		dataKey := model.MakeSortedBotKey(assetBase, assetQuote)
 		strat := plugins.MakeStrategy(sdex, &assetBase, &assetQuote, *strategy, *stratConfigPath)
 		bot := trader.MakeBot(
 			client,
@@ -101,7 +99,6 @@ func init() {
 			sdex,
 			strat,
 			botConfig.TICK_INTERVAL_SECONDS,
-			dataKey,
 		)
 		// --- end initialization of objects ---
 
