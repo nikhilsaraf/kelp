@@ -96,22 +96,11 @@ func (t *Trader) update() {
 	// add a new snapshot element to the history
 	t.state.History = append([]api.Snapshot{}, t.state.History...)
 
-	var e error
-	for _, k := range t.state.Context.Keys {
-		if initializedDatum, ok := plugins.InitializedData[k]; ok {
-			e = initializedDatum.Load()
-			if e != nil {
-				log.Println(e)
-				t.deleteAllOffers()
-				return
-			}
-			// add to current state
-			t.state.History[0].Start[k] = initializedDatum
-		} else {
-			log.Println("error: could not find initialized datum for key " + k)
-			t.deleteAllOffers()
-			return
-		}
+	// take the starting snapshot
+	e := t.loadData(t.state.History[0].Start)
+	if e != nil {
+		t.deleteAllOffers()
+		return
 	}
 
 	// strategy has a chance to set any state it needs
@@ -155,21 +144,11 @@ func (t *Trader) update() {
 		}
 	}
 
-	for _, k := range t.state.Context.Keys {
-		if initializedDatum, ok := plugins.InitializedData[k]; ok {
-			e = initializedDatum.Load()
-			if e != nil {
-				log.Println(e)
-				t.deleteAllOffers()
-				return
-			}
-			// add to end of current state
-			t.state.History[0].Start[k] = initializedDatum
-		} else {
-			log.Println("error: could not find initialized datum for key " + k)
-			t.deleteAllOffers()
-			return
-		}
+	// take the end snapshot
+	e = t.loadData(t.state.History[0].End)
+	if e != nil {
+		t.deleteAllOffers()
+		return
 	}
 	e = t.strat.PostUpdate(t.state)
 	if e != nil {
@@ -178,6 +157,21 @@ func (t *Trader) update() {
 		return
 	}
 	t.pruneHistory()
+}
+
+func (t *Trader) loadData(m map[string]api.Datum) error {
+	for _, k := range t.state.Context.Keys {
+		if initializedDatum, ok := plugins.InitializedData[k]; ok {
+			e := initializedDatum.Load()
+			if e != nil {
+				return e
+			}
+			m[k] = initializedDatum
+		} else {
+			return fmt.Errorf("error: could not find initialized datum for key %s", k)
+		}
+	}
+	return nil
 }
 
 // pruneHistory prunes any excess historical values
