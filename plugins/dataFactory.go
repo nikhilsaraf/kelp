@@ -22,11 +22,11 @@ var InitializedData = map[api.DataKey]api.Datum{
 // The ordering of the returned keys guarantees that the dependencies of every data type has been loaded before itself.
 // This is basically a depth first search
 func MakeDataKeysDag(input []api.DataKey) []api.DataKey {
-	return dagHelper(input, map[api.DataKey]bool{})
+	return dagHelper(input, map[api.DataKey]bool{}, InitializedData)
 }
 
 // dagHelper is a recursive helper to MakeDataKeysDag
-func dagHelper(input []api.DataKey, traversed map[api.DataKey]bool) []api.DataKey {
+func dagHelper(input []api.DataKey, traversed map[api.DataKey]bool, dataMap map[api.DataKey]api.Datum) []api.DataKey {
 	if len(input) == 0 {
 		return []api.DataKey{}
 	}
@@ -38,8 +38,7 @@ func dagHelper(input []api.DataKey, traversed map[api.DataKey]bool) []api.DataKe
 		}
 
 		traversed[key] = true
-		initializedDatum := InitializedData[key]
-		output = append(output, dagHelper(initializedDatum.DirectDependencies(), traversed)...)
+		output = append(output, dagHelper(dataMap[key].DirectDependencies(), traversed, dataMap)...)
 		output = append(output, key)
 	}
 	return output
