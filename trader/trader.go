@@ -159,7 +159,7 @@ func (t *Trader) update() {
 	t.pruneHistory()
 }
 
-func (t *Trader) loadData(m map[string]api.Datum) error {
+func (t *Trader) loadData(m map[api.DataKey]api.Datum) error {
 	for _, k := range t.state.Context.Keys {
 		if initializedDatum, ok := plugins.InitializedData[k]; ok {
 			e := initializedDatum.Load()

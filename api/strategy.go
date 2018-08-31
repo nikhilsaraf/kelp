@@ -8,7 +8,7 @@ import (
 
 // Strategy represents some logic for a bot to follow while doing market making
 type Strategy interface {
-	DataKeys() []string
+	DataKeys() []DataKey
 	MaxHistory() int64
 	PruneExistingOffers(state *State) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer)
 	PreUpdate(state *State) error

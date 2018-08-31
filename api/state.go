@@ -11,13 +11,16 @@ type State struct {
 	History   []Snapshot // descending order, newest values first where history[0] is the currentState
 }
 
+// DataKey is the key type for the data stored in a Snapshot
+type DataKey uint8
+
 // DataContext represents the context needed for basic operations of the bot and never changes throughout the lifecycle of the bot
 type DataContext struct {
 	Client         *horizon.Client
 	AssetBase      horizon.Asset
 	AssetQuote     horizon.Asset
 	TradingAccount string
-	Keys           []string
+	Keys           []DataKey
 }
 
 // DataTransient represents the transient data that is used by every strategy which changes on every iteration of the bot's update lifecycle
@@ -32,8 +35,8 @@ type DataTransient struct {
 
 // Snapshot wraps the data captured at the start and end of a bot's update lifecycle
 type Snapshot struct {
-	Start map[string]Datum
-	End   map[string]Datum
+	Start map[DataKey]Datum
+	End   map[DataKey]Datum
 }
 
 // Datum is an interface representing a single unit of data that can be created and updated throughout a bot's update lifecycle.
