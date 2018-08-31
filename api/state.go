@@ -6,9 +6,9 @@ import (
 
 // State contains the full context of the data and saved history
 type State struct {
-	Context   DataContext
+	Context   *DataContext
 	Transient DataTransient
-	History   []Snapshot // descending order, newest values first where history[0] is the currentState
+	History   []Snapshots // descending order, newest values first where history[0] is the currentState
 }
 
 // DataKey is the key type for the data stored in a Snapshot
@@ -33,8 +33,8 @@ type DataTransient struct {
 	SellingAOffers []horizon.Offer // quoted B/A
 }
 
-// Snapshot wraps the data captured at the start and end of a bot's update lifecycle
-type Snapshot struct {
+// Snapshots wraps the data captured at the start and end of a bot's update lifecycle
+type Snapshots struct {
 	Start map[DataKey]Datum
 	End   map[DataKey]Datum
 }
@@ -42,5 +42,6 @@ type Snapshot struct {
 // Datum is an interface representing a single unit of data that can be created and updated throughout a bot's update lifecycle.
 // The Value here can be a complex data type if needed. You should try to group logical units into the same Datum, such as OHLC for example.
 type Datum interface {
-	Load() error // reads or loads the data
+	DirectDependencies() []DataKey                               // lists the data that this datum is directly dependent on (example, EMA is dependent on OHLC)
+	Load(context *DataContext, snapshot map[DataKey]Datum) error // reads or loads the data
 }

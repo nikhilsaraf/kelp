@@ -3,7 +3,6 @@ package trader
 import (
 	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/lightyeario/kelp/api"
@@ -14,6 +13,11 @@ import (
 )
 
 const maxLumenTrust float64 = 100000000000
+
+// these data keys are needed by the trader bot
+var defaultDataKeys = []api.DataKey{
+	plugins.DataKeyOffers,
+}
 
 // Trader represents a market making bot, which is composed of various parts include the strategy and various APIs.
 type Trader struct {
@@ -38,15 +42,15 @@ func MakeBot(
 	tickIntervalSeconds int32,
 ) *Trader {
 	state := &api.State{
-		Context: api.DataContext{
+		Context: &api.DataContext{
 			Client:         client,
 			AssetBase:      assetBase,
 			AssetQuote:     assetQuote,
 			TradingAccount: tradingAccount,
-			Keys:           strat.DataKeys(),
+			Keys:           plugins.MakeDataKeysDag(append(defaultDataKeys, strat.DataKeys())),
 		},
 		Transient: api.DataTransient{},
-		History:   []api.Snapshot{},
+		History:   []api.Snapshots{},
 	}
 
 	return &Trader{
@@ -63,7 +67,7 @@ func MakeBot(
 
 // Start starts the bot with the injected strategy
 func (t *Trader) Start() {
-	t.state.History = []api.Snapshot{}
+	t.state.History = []api.Snapshots{}
 	for {
 		log.Println("----------------------------------------------------------------------------------------------------")
 		t.update()
@@ -93,11 +97,11 @@ func (t *Trader) deleteAllOffers() {
 
 // time to update the order book and possibly readjust the offers
 func (t *Trader) update() {
-	// add a new snapshot element to the history
-	t.state.History = append([]api.Snapshot{}, t.state.History...)
+	// add a new snapshots element to the history
+	t.state.History = append([]api.Snapshots{}, t.state.History...)
 
 	// take the starting snapshot
-	e := t.loadData(t.state.History[0].Start)
+	e := t.snapshot(t.state.History[0].Start)
 	if e != nil {
 		t.deleteAllOffers()
 		return
@@ -145,7 +149,7 @@ func (t *Trader) update() {
 	}
 
 	// take the end snapshot
-	e = t.loadData(t.state.History[0].End)
+	e = t.snapshot(t.state.History[0].End)
 	if e != nil {
 		t.deleteAllOffers()
 		return
@@ -159,17 +163,16 @@ func (t *Trader) update() {
 	t.pruneHistory()
 }
 
-func (t *Trader) loadData(m map[api.DataKey]api.Datum) error {
+// snapshot takes the snapshot into the passed in map
+func (t *Trader) snapshot(snapshot map[api.DataKey]api.Datum) error {
 	for _, k := range t.state.Context.Keys {
-		if initializedDatum, ok := plugins.InitializedData[k]; ok {
-			e := initializedDatum.Load()
-			if e != nil {
-				return e
-			}
-			m[k] = initializedDatum
-		} else {
-			return fmt.Errorf("error: could not find initialized datum for key %s", k)
+		initializedDatum := plugins.InitializedData[k]
+		// loading a datum would need the context to perform the load and the snapshot data to get anything it depends on
+		e := initializedDatum.Load(t.state.Context, snapshot)
+		if e != nil {
+			return e
 		}
+		snapshot[k] = initializedDatum
 	}
 	return nil
 }
@@ -216,18 +219,5 @@ func (t *Trader) loadBalances() error {
 	t.state.Transient.MaxAssetB = maxB
 	t.state.Transient.TrustAssetA = trustA
 	t.state.Transient.TrustAssetB = trustB
-	return nil
-}
-
-// loads existing offers
-func (t *Trader) loadOffers() error {
-	offers, e := utils.LoadAllOffers(t.state.Context.TradingAccount, t.state.Context.Client)
-	if e != nil {
-		return e
-	}
-	t.state.Transient.SellingAOffers, t.state.Transient.BuyingAOffers = utils.FilterOffers(offers, t.state.Context.AssetBase, t.state.Context.AssetQuote)
-
-	sort.Sort(utils.ByPrice(t.state.Transient.SellingAOffers)) // don't need to reverse here since the prices are inverse
-	sort.Sort(utils.ByPrice(t.state.Transient.BuyingAOffers))
 	return nil
 }
