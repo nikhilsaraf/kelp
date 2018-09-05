@@ -44,9 +44,9 @@ func MakeBot(
 			AssetBase:      assetBase,
 			AssetQuote:     assetQuote,
 			TradingAccount: tradingAccount,
-			Keys:           plugins.MakeDataKeysDag(append(defaultDataKeys, strat.DataKeys())),
+			Keys:           plugins.MakeDataKeysDag(append(defaultDataKeys, strat.DataKeys()...)),
 		},
-		Transient: api.DataTransient{},
+		Transient: nil,
 		History:   []api.Snapshots{},
 	}
 
@@ -67,7 +67,27 @@ func (t *Trader) Start() {
 	t.state.History = []api.Snapshots{}
 	for {
 		log.Println("----------------------------------------------------------------------------------------------------")
-		t.update()
+
+		// prepend a new Snapshots element and take the starting snapshot
+		t.state.History = append([]api.Snapshots{}, t.state.History...)
+		e := t.snapshot(t.state.History[0].Start)
+		if e != nil {
+			log.Println("error: could not load the starting snapshot, trying to delete all the offers (if they were loaded) and skipping the update cycle")
+			t.deleteAllOffers()
+		} else {
+			// create a mutable copy of the start snapshot
+			t.state.Transient = plugins.CopySnapshot(t.state.History[0].Start)
+			t.update()
+			t.state.Transient = nil
+		}
+
+		// take the end snapshot and prune the history
+		e = t.snapshot(t.state.History[0].End)
+		if e != nil {
+			log.Println("error: could not load the ending snapshot, not deleting all offers")
+		}
+		t.pruneHistory()
+
 		log.Printf("sleeping for %d seconds...\n", t.tickIntervalSeconds)
 		time.Sleep(time.Duration(t.tickIntervalSeconds) * time.Second)
 	}
@@ -77,10 +97,13 @@ func (t *Trader) Start() {
 func (t *Trader) deleteAllOffers() {
 	dOps := []build.TransactionMutator{}
 
-	dOps = append(dOps, t.sdex.DeleteAllOffers(t.state.Transient.SellingAOffers)...)
-	t.state.Transient.SellingAOffers = []horizon.Offer{}
-	dOps = append(dOps, t.sdex.DeleteAllOffers(t.state.Transient.BuyingAOffers)...)
-	t.state.Transient.BuyingAOffers = []horizon.Offer{}
+	datumOffers := t.state.History[0].Start[plugins.DataKeyOffers].(plugins.DatumOffers)
+	dOps = append(dOps, t.sdex.DeleteAllOffers(datumOffers.SellingAOffers)...)
+	dOps = append(dOps, t.sdex.DeleteAllOffers(datumOffers.BuyingAOffers)...)
+	t.state.Transient[plugins.DataKeyOffers] = plugins.DatumOffers{
+		SellingAOffers: []horizon.Offer{},
+		BuyingAOffers:  []horizon.Offer{},
+	}
 
 	log.Printf("created %d operations to delete offers\n", len(dOps))
 	if len(dOps) > 0 {
@@ -94,18 +117,8 @@ func (t *Trader) deleteAllOffers() {
 
 // time to update the order book and possibly readjust the offers
 func (t *Trader) update() {
-	// add a new snapshots element to the history
-	t.state.History = append([]api.Snapshots{}, t.state.History...)
-
-	// take the starting snapshot
-	e := t.snapshot(t.state.History[0].Start)
-	if e != nil {
-		t.deleteAllOffers()
-		return
-	}
-
 	// strategy has a chance to set any state it needs
-	e = t.strat.PreUpdate(t.state)
+	e := t.strat.PreUpdate(t.state)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers()
@@ -113,8 +126,11 @@ func (t *Trader) update() {
 	}
 
 	// delete excess offers
-	var pruneOps []build.TransactionMutator
-	pruneOps, t.state.Transient.BuyingAOffers, t.state.Transient.SellingAOffers = t.strat.PruneExistingOffers(t.state)
+	pruneOps, buyingAOffers, sellingAOffers := t.strat.PruneExistingOffers(t.state)
+	t.state.Transient[plugins.DataKeyOffers] = plugins.DatumOffers{
+		SellingAOffers: sellingAOffers,
+		BuyingAOffers:  buyingAOffers,
+	}
 	log.Printf("created %d operations to prune excess offers\n", len(pruneOps))
 	if len(pruneOps) > 0 {
 		e = t.sdex.SubmitOps(pruneOps)
@@ -145,19 +161,12 @@ func (t *Trader) update() {
 		}
 	}
 
-	// take the end snapshot
-	e = t.snapshot(t.state.History[0].End)
-	if e != nil {
-		t.deleteAllOffers()
-		return
-	}
 	e = t.strat.PostUpdate(t.state)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers()
 		return
 	}
-	t.pruneHistory()
 }
 
 // snapshot takes the snapshot into the passed in map

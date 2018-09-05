@@ -48,6 +48,15 @@ func dagHelper(input []api.DataKey, traversed map[api.DataKey]bool, dataMap map[
 	return output
 }
 
+// CopySnapshot returns a non-nil copy of the snapshot passed in
+func CopySnapshot(snapshot api.Snapshot) *api.Snapshot {
+	snapshotCopy := api.Snapshot{}
+	for k, v := range snapshot {
+		snapshotCopy[k] = v
+	}
+	return &snapshotCopy
+}
+
 /****************************** DATA TYPES BELOW THIS LINE ******************************/
 
 // DatumOffers provides the offers on the account broken up by buying and selling offers
@@ -64,7 +73,7 @@ func (d *DatumOffers) DirectDependencies() []api.DataKey {
 }
 
 // Load loads the offers for the given account
-func (d *DatumOffers) Load(context *api.DataContext, snapshot map[api.DataKey]api.Datum) error {
+func (d *DatumOffers) Load(context *api.DataContext, snapshot *api.Snapshot) error {
 	offers, e := utils.LoadAllOffers(context.TradingAccount, context.Client)
 	if e != nil {
 		return e
@@ -91,11 +100,11 @@ var defaultDatumBalances api.Datum = &DatumBalances{}
 
 // DirectDependencies impl.
 func (d *DatumBalances) DirectDependencies() []api.DataKey {
-	return []api.DataKey{}
+	return []api.DataKey{DataKeyOffers}
 }
 
 // Load loads the maximum amounts we can offer for each asset along with trust limits
-func (d *DatumBalances) Load(context *api.DataContext, snapshot map[api.DataKey]api.Datum) error {
+func (d *DatumBalances) Load(context *api.DataContext, snapshot *api.Snapshot) error {
 	account, e := context.Client.LoadAccount(context.TradingAccount)
 	if e != nil {
 		return fmt.Errorf("error loading account: %s", e)
