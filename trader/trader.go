@@ -11,7 +11,7 @@ import (
 )
 
 // these data keys are needed by the trader bot
-var defaultDataKeys = []api.DataKey{
+var defaultDataDependencies = []api.DataKey{
 	plugins.DataKeyOffers,
 	plugins.DataKeyBalances,
 }
@@ -44,7 +44,7 @@ func MakeBot(
 			AssetBase:      assetBase,
 			AssetQuote:     assetQuote,
 			TradingAccount: tradingAccount,
-			Keys:           plugins.MakeDataKeysDag(append(defaultDataKeys, strat.DataKeys()...)),
+			Keys:           plugins.MakeDataDependenciesDag(append(defaultDataDependencies, strat.DataDependencies()...)),
 		},
 		Transient: nil,
 		History:   []api.Snapshots{},
