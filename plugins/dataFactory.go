@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"fmt"
+	"log"
 	"sort"
 
 	"github.com/lightyeario/kelp/api"
@@ -11,7 +13,9 @@ import (
 // Constants for the keys to InitializedData
 const (
 	DataKeyOffers api.DataKey = iota
+	DataKeyBalances
 )
+const maxLumenTrust float64 = 100000000000
 
 // InitializedData holds the initialized data objects for the full repository of data fields supported
 var InitializedData = map[api.DataKey]api.Datum{
@@ -72,5 +76,58 @@ func (d *DatumOffers) Load(context *api.DataContext, snapshot map[api.DataKey]ap
 
 	d.SellingAOffers = sellingOffers
 	d.BuyingAOffers = buyingOffers
+	return nil
+}
+
+// DatumBalances contains the balances on an account
+type DatumBalances struct {
+	MaxAssetA   float64 // base
+	MaxAssetB   float64 // quote
+	TrustAssetA float64
+	TrustAssetB float64
+}
+
+var defaultDatumBalances api.Datum = &DatumBalances{}
+
+// DirectDependencies impl.
+func (d *DatumBalances) DirectDependencies() []api.DataKey {
+	return []api.DataKey{}
+}
+
+// Load loads the maximum amounts we can offer for each asset along with trust limits
+func (d *DatumBalances) Load(context *api.DataContext, snapshot map[api.DataKey]api.Datum) error {
+	account, e := context.Client.LoadAccount(context.TradingAccount)
+	if e != nil {
+		return fmt.Errorf("error loading account: %s", e)
+	}
+
+	// load asset data
+	var maxA float64
+	var maxB float64
+	var trustA float64
+	var trustB float64
+	for _, balance := range account.Balances {
+		if utils.AssetsEqual(balance.Asset, context.AssetBase) {
+			maxA = utils.AmountStringAsFloat(balance.Balance)
+			if balance.Asset.Type == utils.Native {
+				trustA = maxLumenTrust
+			} else {
+				trustA = utils.AmountStringAsFloat(balance.Limit)
+			}
+			log.Printf("maxA=%.7f,trustA=%.7f\n", maxA, trustA)
+		} else if utils.AssetsEqual(balance.Asset, context.AssetQuote) {
+			maxB = utils.AmountStringAsFloat(balance.Balance)
+			if balance.Asset.Type == utils.Native {
+				trustB = maxLumenTrust
+			} else {
+				trustB = utils.AmountStringAsFloat(balance.Limit)
+			}
+			log.Printf("maxB=%.7f,trustB=%.7f\n", maxB, trustB)
+		}
+	}
+	d.MaxAssetA = maxA
+	d.MaxAssetB = maxB
+	d.TrustAssetA = trustA
+	d.TrustAssetB = trustB
 	return nil
 }

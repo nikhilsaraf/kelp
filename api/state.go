@@ -6,9 +6,8 @@ import (
 
 // State contains the full context of the data and saved history
 type State struct {
-	Context   *DataContext
-	Transient DataTransient
-	History   []Snapshots // descending order, newest values first where history[0] is the currentState
+	Context *DataContext
+	History []Snapshots // descending order, newest values first where history[0] is the currentState
 }
 
 // DataKey is the key type for the data stored in a Snapshot
@@ -21,16 +20,6 @@ type DataContext struct {
 	AssetQuote     horizon.Asset
 	TradingAccount string
 	Keys           []DataKey
-}
-
-// DataTransient represents the transient data that is used by every strategy which changes on every iteration of the bot's update lifecycle
-type DataTransient struct {
-	MaxAssetA      float64 // base
-	MaxAssetB      float64 // quote
-	TrustAssetA    float64
-	TrustAssetB    float64
-	BuyingAOffers  []horizon.Offer // quoted A/B
-	SellingAOffers []horizon.Offer // quoted B/A
 }
 
 // Snapshots wraps the data captured at the start and end of a bot's update lifecycle

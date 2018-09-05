@@ -1,22 +1,19 @@
 package trader
 
 import (
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/lightyeario/kelp/api"
 	"github.com/lightyeario/kelp/plugins"
-	"github.com/lightyeario/kelp/support/utils"
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
 )
 
-const maxLumenTrust float64 = 100000000000
-
 // these data keys are needed by the trader bot
 var defaultDataKeys = []api.DataKey{
 	plugins.DataKeyOffers,
+	plugins.DataKeyBalances,
 }
 
 // Trader represents a market making bot, which is composed of various parts include the strategy and various APIs.
@@ -182,42 +179,4 @@ func (t *Trader) pruneHistory() {
 	if t.strat.MaxHistory() > int64(len(t.state.History)) {
 		t.state.History = t.state.History[:t.strat.MaxHistory()]
 	}
-}
-
-// loads the maximum amounts we can offer for each asset along with trust limits
-func (t *Trader) loadBalances() error {
-	account, e := t.state.Context.Client.LoadAccount(t.state.Context.TradingAccount)
-	if e != nil {
-		return fmt.Errorf("error loading account: %s", e)
-	}
-
-	// load asset data
-	var maxA float64
-	var maxB float64
-	var trustA float64
-	var trustB float64
-	for _, balance := range account.Balances {
-		if utils.AssetsEqual(balance.Asset, t.state.Context.AssetBase) {
-			maxA = utils.AmountStringAsFloat(balance.Balance)
-			if balance.Asset.Type == utils.Native {
-				trustA = maxLumenTrust
-			} else {
-				trustA = utils.AmountStringAsFloat(balance.Limit)
-			}
-			log.Printf("maxA=%.7f,trustA=%.7f\n", maxA, trustA)
-		} else if utils.AssetsEqual(balance.Asset, t.state.Context.AssetQuote) {
-			maxB = utils.AmountStringAsFloat(balance.Balance)
-			if balance.Asset.Type == utils.Native {
-				trustB = maxLumenTrust
-			} else {
-				trustB = utils.AmountStringAsFloat(balance.Limit)
-			}
-			log.Printf("maxB=%.7f,trustB=%.7f\n", maxB, trustB)
-		}
-	}
-	t.state.Transient.MaxAssetA = maxA
-	t.state.Transient.MaxAssetB = maxB
-	t.state.Transient.TrustAssetA = trustA
-	t.state.Transient.TrustAssetB = trustB
-	return nil
 }
