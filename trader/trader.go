@@ -97,10 +97,10 @@ func (t *Trader) Start() {
 func (t *Trader) deleteAllOffers() {
 	dOps := []build.TransactionMutator{}
 
-	datumOffers := t.state.History[0].Start[plugins.DataKeyOffers].(plugins.DatumOffers)
+	datumOffers := t.state.History[0].Start[plugins.DataKeyOffers].(*plugins.DatumOffers)
 	dOps = append(dOps, t.sdex.DeleteAllOffers(datumOffers.SellingAOffers)...)
 	dOps = append(dOps, t.sdex.DeleteAllOffers(datumOffers.BuyingAOffers)...)
-	t.state.Transient[plugins.DataKeyOffers] = plugins.DatumOffers{
+	(*t.state.Transient)[plugins.DataKeyOffers] = &plugins.DatumOffers{
 		SellingAOffers: []horizon.Offer{},
 		BuyingAOffers:  []horizon.Offer{},
 	}
@@ -127,7 +127,7 @@ func (t *Trader) update() {
 
 	// delete excess offers
 	pruneOps, buyingAOffers, sellingAOffers := t.strat.PruneExistingOffers(t.state)
-	t.state.Transient[plugins.DataKeyOffers] = plugins.DatumOffers{
+	(*t.state.Transient)[plugins.DataKeyOffers] = &plugins.DatumOffers{
 		SellingAOffers: sellingAOffers,
 		BuyingAOffers:  buyingAOffers,
 	}
