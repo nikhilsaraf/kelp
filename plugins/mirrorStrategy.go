@@ -193,6 +193,6 @@ func doModifyOffer(
 }
 
 // PostUpdate changes the strategy's state after the update has taken place
-func (s *mirrorStrategy) PostUpdate(history []api.State, currentState api.State) error {
+func (s *mirrorStrategy) PostUpdate(state *api.State) error {
 	return nil
 }

@@ -152,7 +152,7 @@ func (s *sellSideStrategy) UpdateWithOps(state *api.State) (ops []build.Transact
 }
 
 // PostUpdate impl
-func (s *sellSideStrategy) PostUpdate(history []api.State, currentState api.State) error {
+func (s *sellSideStrategy) PostUpdate(state *api.State) error {
 	return nil
 }
 

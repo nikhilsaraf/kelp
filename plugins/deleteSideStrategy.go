@@ -75,6 +75,6 @@ func (s *deleteSideStrategy) UpdateWithOps(state *api.State) (ops []build.Transa
 }
 
 // PostUpdate impl
-func (s *deleteSideStrategy) PostUpdate(history []api.State, currentState api.State) error {
+func (s *deleteSideStrategy) PostUpdate(state *api.State) error {
 	return nil
 }

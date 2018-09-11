@@ -114,6 +114,6 @@ func (s *composeStrategy) UpdateWithOps(state *api.State) ([]build.TransactionMu
 }
 
 // PostUpdate impl
-func (s *composeStrategy) PostUpdate(history []api.State, currentState api.State) error {
+func (s *composeStrategy) PostUpdate(state *api.State) error {
 	return nil
 }
