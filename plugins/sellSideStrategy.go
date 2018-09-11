@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"log"
 	"math"
 
@@ -53,7 +54,7 @@ func makeSellSideStrategy(
 
 // DataDependencies impl.
 func (s *sellSideStrategy) DataDependencies() []api.DataKey {
-	return []api.DataKey{DataKeyOffers}
+	return []api.DataKey{DataKeyOffers, DataKeyBalances}
 }
 
 // MaxHistory impl.
@@ -83,13 +84,27 @@ func (s *sellSideStrategy) PruneExistingOffers(state *api.State) ([]build.Transa
 }
 
 // PreUpdate impl
-func (s *sellSideStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
-	s.maxAssetBase = maxAssetBase
-	s.maxAssetQuote = maxAssetQuote
+func (s *sellSideStrategy) PreUpdate(state *api.State) error {
+	// pull data out of the transient state
+	allBalances := *(*state.Transient)[DataKeyBalances].(*DatumBalances)
+	if maxAssetBase, ok := allBalances.Balance[state.Context.AssetBase]; ok {
+		s.maxAssetBase = maxAssetBase
+	} else {
+		return fmt.Errorf("framework error: balance for the base asset was not found in the Transient state")
+	}
+	if maxAssetQuote, ok := allBalances.Balance[state.Context.AssetQuote]; ok {
+		s.maxAssetQuote = maxAssetQuote
+	} else {
+		return fmt.Errorf("framework error: balance for the quote asset was not found in the Transient state")
+	}
+	trustQuote, ok := allBalances.Trust[state.Context.AssetQuote]
+	if !ok {
+		return fmt.Errorf("framework error: trust value for the quote asset was not found in the Transient state")
+	}
 
 	// don't place orders if we have nothing to sell or if we cannot buy the asset in exchange
-	nothingToSell := maxAssetBase == 0
-	lineFull := maxAssetQuote == trustQuote
+	nothingToSell := s.maxAssetBase == 0
+	lineFull := s.maxAssetQuote == trustQuote
 	if nothingToSell || lineFull {
 		s.currentLevels = []api.Level{}
 		log.Printf("no capacity to place sell orders (nothingToSell = %v, lineFull = %v)\n", nothingToSell, lineFull)
@@ -98,7 +113,7 @@ func (s *sellSideStrategy) PreUpdate(history []api.State, currentState api.State
 
 	// load currentLevels only once here
 	var e error
-	s.currentLevels, e = s.levelsProvider.GetLevels(s.maxAssetBase, s.maxAssetQuote, buyingAOffers, sellingAOffers)
+	s.currentLevels, e = s.levelsProvider.GetLevels(s.maxAssetBase, s.maxAssetQuote)
 	if e != nil {
 		log.Printf("levels couldn't be loaded: %s\n", e)
 		return e

@@ -65,7 +65,7 @@ func (s *deleteSideStrategy) PruneExistingOffers(state *api.State) ([]build.Tran
 }
 
 // PreUpdate impl
-func (s *deleteSideStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *deleteSideStrategy) PreUpdate(state *api.State) error {
 	return nil
 }
 

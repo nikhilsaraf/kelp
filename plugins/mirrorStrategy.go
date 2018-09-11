@@ -72,7 +72,7 @@ func (s mirrorStrategy) PruneExistingOffers(state *api.State) ([]build.Transacti
 }
 
 // PreUpdate changes the strategy's state in prepration for the update
-func (s *mirrorStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetA float64, maxAssetB float64, trustA float64, trustB float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *mirrorStrategy) PreUpdate(state *api.State) error {
 	return nil
 }
 

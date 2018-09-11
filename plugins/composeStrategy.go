@@ -63,11 +63,11 @@ func (s *composeStrategy) PruneExistingOffers(state *api.State) ([]build.Transac
 }
 
 // PreUpdate impl
-func (s *composeStrategy) PreUpdate(history []api.State, currentState api.State, maxAssetBase float64, maxAssetQuote float64, trustBase float64, trustQuote float64, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) error {
+func (s *composeStrategy) PreUpdate(state *api.State) error {
 	// swap assets (base/quote) for buying strategy
-	e1 := s.buyStrat.PreUpdate(history, currentState, maxAssetQuote, maxAssetBase, trustQuote, trustBase, buyingAOffers, sellingAOffers)
+	e1 := s.buyStrat.PreUpdate(state)
 	// assets maintain same ordering for selling
-	e2 := s.sellStrat.PreUpdate(history, currentState, maxAssetBase, maxAssetQuote, trustBase, trustQuote, buyingAOffers, sellingAOffers)
+	e2 := s.sellStrat.PreUpdate(state)
 
 	if e1 == nil && e2 == nil {
 		return nil

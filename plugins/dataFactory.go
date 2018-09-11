@@ -19,7 +19,8 @@ const maxLumenTrust float64 = 100000000000
 
 // InitializedData holds the initialized data objects for the full repository of data fields supported
 var InitializedData = map[api.DataKey]api.Datum{
-	DataKeyOffers: defaultDatumOffers,
+	DataKeyOffers:   defaultDatumOffers,
+	DataKeyBalances: defaultDatumBalances,
 }
 
 // MakeDataDependenciesDag will return an ordered list of data keys including dependencies of the keys provided.
@@ -90,10 +91,8 @@ func (d *DatumOffers) Load(context *api.DataContext, snapshot *api.Snapshot) err
 
 // DatumBalances contains the balances on an account
 type DatumBalances struct {
-	MaxAssetA   float64 // base
-	MaxAssetB   float64 // quote
-	TrustAssetA float64
-	TrustAssetB float64
+	Balance map[horizon.Asset]float64
+	Trust   map[horizon.Asset]float64
 }
 
 var defaultDatumBalances api.Datum = &DatumBalances{}
@@ -134,9 +133,13 @@ func (d *DatumBalances) Load(context *api.DataContext, snapshot *api.Snapshot) e
 			log.Printf("maxB=%.7f,trustB=%.7f\n", maxB, trustB)
 		}
 	}
-	d.MaxAssetA = maxA
-	d.MaxAssetB = maxB
-	d.TrustAssetA = trustA
-	d.TrustAssetB = trustB
+	d.Balance = map[horizon.Asset]float64{
+		context.AssetBase:  maxA,
+		context.AssetQuote: maxB,
+	}
+	d.Trust = map[horizon.Asset]float64{
+		context.AssetBase:  trustA,
+		context.AssetQuote: trustB,
+	}
 	return nil
 }
