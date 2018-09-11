@@ -14,12 +14,10 @@ import (
 
 // composeStrategy is a strategy that is composed of two sub-strategies
 type composeStrategy struct {
-	initialStateFn func(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State
-	maxHistory     int64
-	assetBase      *horizon.Asset
-	assetQuote     *horizon.Asset
-	buyStrat       api.SideStrategy
-	sellStrat      api.SideStrategy
+	assetBase  *horizon.Asset
+	assetQuote *horizon.Asset
+	buyStrat   api.SideStrategy
+	sellStrat  api.SideStrategy
 }
 
 // ensure it implements Strategy
@@ -27,20 +25,16 @@ var _ api.Strategy = &composeStrategy{}
 
 // makeComposeStrategy is a factory method for composeStrategy
 func makeComposeStrategy(
-	initialStateFn func(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State,
-	maxHistory int64,
 	assetBase *horizon.Asset,
 	assetQuote *horizon.Asset,
 	buyStrat api.SideStrategy,
 	sellStrat api.SideStrategy,
 ) api.Strategy {
 	return &composeStrategy{
-		initialStateFn: initialStateFn,
-		maxHistory:     maxHistory,
-		assetBase:      assetBase,
-		assetQuote:     assetQuote,
-		buyStrat:       buyStrat,
-		sellStrat:      sellStrat,
+		assetBase:  assetBase,
+		assetQuote: assetQuote,
+		buyStrat:   buyStrat,
+		sellStrat:  sellStrat,
 	}
 }
 
@@ -51,7 +45,10 @@ func (s *composeStrategy) DataDependencies() []api.DataKey {
 
 // MaxHistory impl.
 func (s *composeStrategy) MaxHistory() int64 {
-	return s.maxHistory
+	if s.buyStrat.MaxHistory() > s.sellStrat.MaxHistory() {
+		return s.buyStrat.MaxHistory()
+	}
+	return s.sellStrat.MaxHistory()
 }
 
 // PruneExistingOffers impl

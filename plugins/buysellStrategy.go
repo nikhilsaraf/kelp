@@ -86,8 +86,6 @@ func makeBuySellStrategy(
 	)
 
 	return makeComposeStrategy(
-		MakeBasicState,
-		0,
 		assetBase,
 		assetQuote,
 		buySideStrategy,

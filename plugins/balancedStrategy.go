@@ -80,8 +80,6 @@ func makeBalancedStrategy(
 	)
 
 	return makeComposeStrategy(
-		MakeBasicState,
-		0,
 		assetBase,
 		assetQuote,
 		buySideStrategy,

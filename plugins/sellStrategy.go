@@ -57,8 +57,6 @@ func makeSellStrategy(
 	deleteSideStrategy := makeDeleteSideStrategy(sdex, assetQuote, assetBase, true)
 
 	return makeComposeStrategy(
-		MakeBasicState,
-		0,
 		assetBase,
 		assetQuote,
 		deleteSideStrategy,

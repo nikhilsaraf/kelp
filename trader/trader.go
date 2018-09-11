@@ -70,7 +70,7 @@ func (t *Trader) Start() {
 
 		// prepend a new Snapshots element and take the starting snapshot
 		t.state.History = append([]api.Snapshots{}, t.state.History...)
-		e := t.snapshot(t.state.History[0].Start)
+		e := t.snapshot(&t.state.History[0].Start)
 		if e != nil {
 			log.Println("error: could not load the starting snapshot, trying to delete all the offers (if they were loaded) and skipping the update cycle")
 			t.deleteAllOffers()
@@ -82,7 +82,7 @@ func (t *Trader) Start() {
 		}
 
 		// take the end snapshot and prune the history
-		e = t.snapshot(t.state.History[0].End)
+		e = t.snapshot(&t.state.History[0].End)
 		if e != nil {
 			log.Println("error: could not load the ending snapshot, not deleting all offers")
 		}
@@ -170,7 +170,7 @@ func (t *Trader) update() {
 }
 
 // snapshot takes the snapshot into the passed in map
-func (t *Trader) snapshot(snapshot map[api.DataKey]api.Datum) error {
+func (t *Trader) snapshot(snapshot *api.Snapshot) error {
 	for _, k := range t.state.Context.Keys {
 		initializedDatum := plugins.InitializedData[k]
 		// loading a datum would need the context to perform the load and the snapshot data to get anything it depends on
@@ -178,14 +178,15 @@ func (t *Trader) snapshot(snapshot map[api.DataKey]api.Datum) error {
 		if e != nil {
 			return e
 		}
-		snapshot[k] = initializedDatum
+		(*snapshot)[k] = initializedDatum
 	}
 	return nil
 }
 
 // pruneHistory prunes any excess historical values
 func (t *Trader) pruneHistory() {
-	if t.strat.MaxHistory() > int64(len(t.state.History)) {
-		t.state.History = t.state.History[:t.strat.MaxHistory()]
+	maxHistory := t.strat.MaxHistory()
+	if int64(len(t.state.History)) > maxHistory {
+		t.state.History = t.state.History[:maxHistory]
 	}
 }
