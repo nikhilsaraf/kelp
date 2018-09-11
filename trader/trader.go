@@ -69,7 +69,11 @@ func (t *Trader) Start() {
 		log.Println("----------------------------------------------------------------------------------------------------")
 
 		// prepend a new Snapshots element and take the starting snapshot
-		t.state.History = append([]api.Snapshots{}, t.state.History...)
+		newSnapshots := api.Snapshots{
+			Start: api.Snapshot{},
+			End:   api.Snapshot{},
+		}
+		t.state.History = append([]api.Snapshots{newSnapshots}, t.state.History...)
 		e := t.snapshot(&t.state.History[0].Start)
 		if e != nil {
 			log.Println("error: could not load the starting snapshot, trying to delete all the offers (if they were loaded) and skipping the update cycle")
