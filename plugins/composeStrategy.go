@@ -44,18 +44,20 @@ func makeComposeStrategy(
 	}
 }
 
-func (s *composeStrategy) InitializeState(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State {
-	return s.initialStateFn(api, assetBase, assetQuote, tradingAccount)
+// DataDependencies impl.
+func (s *composeStrategy) DataDependencies() []api.DataKey {
+	return append(s.buyStrat.DataDependencies(), s.sellStrat.DataDependencies()...)
 }
 
+// MaxHistory impl.
 func (s *composeStrategy) MaxHistory() int64 {
 	return s.maxHistory
 }
 
 // PruneExistingOffers impl
-func (s *composeStrategy) PruneExistingOffers(history []api.State, currentState api.State, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
-	pruneOps1, newBuyingAOffers := s.buyStrat.PruneExistingOffers(history, currentState, buyingAOffers)
-	pruneOps2, newSellingAOffers := s.sellStrat.PruneExistingOffers(history, currentState, sellingAOffers)
+func (s *composeStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
+	pruneOps1, newBuyingAOffers := s.buyStrat.PruneExistingOffers(state)
+	pruneOps2, newSellingAOffers := s.sellStrat.PruneExistingOffers(state)
 	pruneOps1 = append(pruneOps1, pruneOps2...)
 	return pruneOps1, newBuyingAOffers, newSellingAOffers
 }

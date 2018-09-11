@@ -14,6 +14,7 @@ type deleteSideStrategy struct {
 	sdex       *SDEX
 	assetBase  *horizon.Asset
 	assetQuote *horizon.Asset
+	isBuySide  bool
 }
 
 // ensure it implements SideStrategy
@@ -24,16 +25,36 @@ func makeDeleteSideStrategy(
 	sdex *SDEX,
 	assetBase *horizon.Asset,
 	assetQuote *horizon.Asset,
+	isBuySide bool,
 ) api.SideStrategy {
 	return &deleteSideStrategy{
 		sdex:       sdex,
 		assetBase:  assetBase,
 		assetQuote: assetQuote,
+		isBuySide:  isBuySide,
 	}
 }
 
+// DataDependencies impl.
+func (s *deleteSideStrategy) DataDependencies() []api.DataKey {
+	return []api.DataKey{DataKeyOffers}
+}
+
+// MaxHistory impl.
+func (s *deleteSideStrategy) MaxHistory() int64 {
+	return 0
+}
+
 // PruneExistingOffers impl
-func (s *deleteSideStrategy) PruneExistingOffers(history []api.State, currentState api.State, offers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer) {
+func (s *deleteSideStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer) {
+	allOffers := *(*state.Transient)[DataKeyOffers].(*DatumOffers)
+	var offers []horizon.Offer
+	if s.isBuySide {
+		offers = allOffers.BuyingAOffers
+	} else {
+		offers = allOffers.SellingAOffers
+	}
+
 	log.Printf("deleteSideStrategy: deleting %d offers\n", len(offers))
 	pruneOps := []build.TransactionMutator{}
 	for i := 0; i < len(offers); i++ {

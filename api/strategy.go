@@ -18,6 +18,8 @@ type Strategy interface {
 
 // SideStrategy represents a strategy on a single side of the orderbook
 type SideStrategy interface {
+	DataDependencies() []DataKey
+	MaxHistory() int64
 	PruneExistingOffers(state *State) ([]build.TransactionMutator, []horizon.Offer)
 	PreUpdate(state *State) error
 	UpdateWithOps(state *State) (ops []build.TransactionMutator, newTopOffer *model.Number, e error)

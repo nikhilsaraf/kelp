@@ -54,7 +54,7 @@ func makeSellStrategy(
 		false,
 	)
 	// switch sides of base/quote here for the delete side
-	deleteSideStrategy := makeDeleteSideStrategy(sdex, assetQuote, assetBase)
+	deleteSideStrategy := makeDeleteSideStrategy(sdex, assetQuote, assetBase, true)
 
 	return makeComposeStrategy(
 		MakeBasicState,

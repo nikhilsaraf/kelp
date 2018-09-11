@@ -13,13 +13,13 @@ import (
 
 // sellSideStrategy is a strategy to sell a specific currency on SDEX on a single side by reading prices from an exchange
 type sellSideStrategy struct {
-	sdex                *SDEX
-	assetBase           *horizon.Asset
-	assetQuote          *horizon.Asset
-	levelsProvider      api.LevelProvider
-	priceTolerance      float64
-	amountTolerance     float64
-	divideAmountByPrice bool
+	sdex            *SDEX
+	assetBase       *horizon.Asset
+	assetQuote      *horizon.Asset
+	levelsProvider  api.LevelProvider
+	priceTolerance  float64
+	amountTolerance float64
+	isBuySide       bool
 
 	// uninitialized
 	currentLevels []api.Level // levels for current iteration
@@ -38,21 +38,39 @@ func makeSellSideStrategy(
 	levelsProvider api.LevelProvider,
 	priceTolerance float64,
 	amountTolerance float64,
-	divideAmountByPrice bool,
+	isBuySide bool,
 ) api.SideStrategy {
 	return &sellSideStrategy{
-		sdex:                sdex,
-		assetBase:           assetBase,
-		assetQuote:          assetQuote,
-		levelsProvider:      levelsProvider,
-		priceTolerance:      priceTolerance,
-		amountTolerance:     amountTolerance,
-		divideAmountByPrice: divideAmountByPrice,
+		sdex:            sdex,
+		assetBase:       assetBase,
+		assetQuote:      assetQuote,
+		levelsProvider:  levelsProvider,
+		priceTolerance:  priceTolerance,
+		amountTolerance: amountTolerance,
+		isBuySide:       isBuySide,
 	}
 }
 
+// DataDependencies impl.
+func (s *sellSideStrategy) DataDependencies() []api.DataKey {
+	return []api.DataKey{DataKeyOffers}
+}
+
+// MaxHistory impl.
+func (s *sellSideStrategy) MaxHistory() int64 {
+	return 0
+}
+
 // PruneExistingOffers impl
-func (s *sellSideStrategy) PruneExistingOffers(history []api.State, currentState api.State, offers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer) {
+func (s *sellSideStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer) {
+	allOffers := *(*state.Transient)[DataKeyOffers].(*DatumOffers)
+	var offers []horizon.Offer
+	if s.isBuySide {
+		offers = allOffers.BuyingAOffers
+	} else {
+		offers = allOffers.SellingAOffers
+	}
+
 	pruneOps := []build.TransactionMutator{}
 	for i := len(s.currentLevels); i < len(offers); i++ {
 		pOp := s.sdex.DeleteOffer(offers[i])
@@ -119,7 +137,7 @@ func (s *sellSideStrategy) PostUpdate(history []api.State, currentState api.Stat
 func (s *sellSideStrategy) updateSellLevel(offers []horizon.Offer, index int) *build.ManageOfferBuilder {
 	targetPrice := s.currentLevels[index].Price
 	targetAmount := s.currentLevels[index].Amount
-	if s.divideAmountByPrice {
+	if s.isBuySide {
 		targetAmount = *model.NumberFromFloat(targetAmount.AsFloat()/targetPrice.AsFloat(), targetAmount.Precision())
 	}
 	targetAmount = *model.NumberFromFloat(math.Min(targetAmount.AsFloat(), s.maxAssetBase), targetAmount.Precision())

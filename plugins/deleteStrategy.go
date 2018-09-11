@@ -16,7 +16,7 @@ func makeDeleteStrategy(
 		0,
 		assetBase,
 		assetQuote,
-		makeDeleteSideStrategy(sdex, assetQuote, assetBase), // switch sides of base/quote here for the buy side
-		makeDeleteSideStrategy(sdex, assetBase, assetQuote),
+		makeDeleteSideStrategy(sdex, assetQuote, assetBase, true), // switch sides of base/quote here for the buy side
+		makeDeleteSideStrategy(sdex, assetBase, assetQuote, false),
 	)
 }

@@ -55,17 +55,20 @@ func makeMirrorStrategy(sdex *SDEX, baseAsset *horizon.Asset, quoteAsset *horizo
 	}
 }
 
-func (s *mirrorStrategy) InitializeState(api *horizon.Client, assetBase horizon.Asset, assetQuote horizon.Asset, tradingAccount string) api.State {
-	return MakeBasicState(api, assetBase, assetQuote, tradingAccount)
+// DataDependencies impl.
+func (s mirrorStrategy) DataDependencies() []api.DataKey {
+	return []api.DataKey{DataKeyOffers}
 }
 
-func (s *mirrorStrategy) MaxHistory() int64 {
+// MaxHistory impl.
+func (s mirrorStrategy) MaxHistory() int64 {
 	return 0
 }
 
 // PruneExistingOffers deletes any extra offers
-func (s mirrorStrategy) PruneExistingOffers(history []api.State, currentState api.State, buyingAOffers []horizon.Offer, sellingAOffers []horizon.Offer) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
-	return []build.TransactionMutator{}, buyingAOffers, sellingAOffers
+func (s mirrorStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
+	offers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
+	return []build.TransactionMutator{}, offers.BuyingAOffers, offers.SellingAOffers
 }
 
 // PreUpdate changes the strategy's state in prepration for the update
