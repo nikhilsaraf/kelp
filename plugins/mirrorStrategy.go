@@ -67,8 +67,8 @@ func (s mirrorStrategy) MaxHistory() int64 {
 
 // PruneExistingOffers deletes any extra offers
 func (s mirrorStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer, []horizon.Offer) {
-	offers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
-	return []build.TransactionMutator{}, offers.BuyingAOffers, offers.SellingAOffers
+	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
+	return []build.TransactionMutator{}, allOffers.BuyingAOffers, allOffers.SellingAOffers
 }
 
 // PreUpdate changes the strategy's state in prepration for the update
@@ -77,19 +77,16 @@ func (s *mirrorStrategy) PreUpdate(state *api.State) error {
 }
 
 // UpdateWithOps builds the operations we want performed on the account
-func (s mirrorStrategy) UpdateWithOps(
-	history []api.State,
-	currentState api.State,
-	buyingAOffers []horizon.Offer,
-	sellingAOffers []horizon.Offer,
-) ([]build.TransactionMutator, error) {
+func (s mirrorStrategy) UpdateWithOps(state *api.State) ([]build.TransactionMutator, error) {
+	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
+
 	ob, e := s.tradeAPI.GetOrderBook(s.orderbookPair, s.config.ORDERBOOK_DEPTH)
 	if e != nil {
 		return nil, e
 	}
 
 	buyOps := s.updateLevels(
-		buyingAOffers,
+		allOffers.BuyingAOffers,
 		ob.Bids(),
 		s.sdex.ModifyBuyOffer,
 		s.sdex.CreateBuyOffer,
@@ -98,7 +95,7 @@ func (s mirrorStrategy) UpdateWithOps(
 	)
 	log.Printf("num. buyOps in this update: %d\n", len(buyOps))
 	sellOps := s.updateLevels(
-		sellingAOffers,
+		allOffers.SellingAOffers,
 		ob.Asks(),
 		s.sdex.ModifySellOffer,
 		s.sdex.CreateSellOffer,
@@ -108,14 +105,13 @@ func (s mirrorStrategy) UpdateWithOps(
 	log.Printf("num. sellOps in this update: %d\n", len(sellOps))
 
 	ops := []build.TransactionMutator{}
-	if len(ob.Bids()) > 0 && len(sellingAOffers) > 0 && ob.Bids()[0].Price.AsFloat() >= utils.PriceAsFloat(sellingAOffers[0].Price) {
+	if len(ob.Bids()) > 0 && len(allOffers.SellingAOffers) > 0 && ob.Bids()[0].Price.AsFloat() >= utils.PriceAsFloat(allOffers.SellingAOffers[0].Price) {
 		ops = append(ops, sellOps...)
 		ops = append(ops, buyOps...)
 	} else {
 		ops = append(ops, buyOps...)
 		ops = append(ops, sellOps...)
 	}
-
 	return ops, nil
 }
 

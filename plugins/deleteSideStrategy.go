@@ -47,7 +47,7 @@ func (s *deleteSideStrategy) MaxHistory() int64 {
 
 // PruneExistingOffers impl
 func (s *deleteSideStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer) {
-	allOffers := *(*state.Transient)[DataKeyOffers].(*DatumOffers)
+	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
 	var offers []horizon.Offer
 	if s.isBuySide {
 		offers = allOffers.BuyingAOffers
@@ -70,7 +70,7 @@ func (s *deleteSideStrategy) PreUpdate(state *api.State) error {
 }
 
 // UpdateWithOps impl
-func (s *deleteSideStrategy) UpdateWithOps(history []api.State, currentState api.State, offers []horizon.Offer) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
+func (s *deleteSideStrategy) UpdateWithOps(state *api.State) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
 	return []build.TransactionMutator{}, nil, nil
 }
 

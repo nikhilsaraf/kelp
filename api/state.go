@@ -7,7 +7,7 @@ import (
 // State contains the full context of the data and saved history
 type State struct {
 	Context   *DataContext
-	Transient *Snapshot
+	Transient *Snapshot   // this is only accurate upto the call made to UpdateWithOps and not after that
 	History   []Snapshots // descending order, newest values first where history[0] is the currentState
 }
 

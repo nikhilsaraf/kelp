@@ -64,7 +64,7 @@ func (s *sellSideStrategy) MaxHistory() int64 {
 
 // PruneExistingOffers impl
 func (s *sellSideStrategy) PruneExistingOffers(state *api.State) ([]build.TransactionMutator, []horizon.Offer) {
-	allOffers := *(*state.Transient)[DataKeyOffers].(*DatumOffers)
+	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
 	var offers []horizon.Offer
 	if s.isBuySide {
 		offers = allOffers.BuyingAOffers
@@ -122,7 +122,15 @@ func (s *sellSideStrategy) PreUpdate(state *api.State) error {
 }
 
 // UpdateWithOps impl
-func (s *sellSideStrategy) UpdateWithOps(history []api.State, currentState api.State, offers []horizon.Offer) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
+func (s *sellSideStrategy) UpdateWithOps(state *api.State) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
+	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
+	var offers []horizon.Offer
+	if s.isBuySide {
+		offers = allOffers.BuyingAOffers
+	} else {
+		offers = allOffers.SellingAOffers
+	}
+
 	newTopOffer = nil
 	for i := len(s.currentLevels) - 1; i >= 0; i-- {
 		op := s.updateSellLevel(offers, i)

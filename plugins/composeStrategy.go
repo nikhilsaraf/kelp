@@ -84,17 +84,12 @@ func (s *composeStrategy) PreUpdate(state *api.State) error {
 }
 
 // UpdateWithOps impl
-func (s *composeStrategy) UpdateWithOps(
-	history []api.State,
-	currentState api.State,
-	buyingAOffers []horizon.Offer,
-	sellingAOffers []horizon.Offer,
-) ([]build.TransactionMutator, error) {
+func (s *composeStrategy) UpdateWithOps(state *api.State) ([]build.TransactionMutator, error) {
 	// buy side, flip newTopBuyPrice because it will be inverted from this parent strategy's context of base/quote
-	buyOps, newTopBuyPriceInverted, e1 := s.buyStrat.UpdateWithOps(history, currentState, buyingAOffers)
+	buyOps, newTopBuyPriceInverted, e1 := s.buyStrat.UpdateWithOps(state)
 	newTopBuyPrice := model.InvertNumber(newTopBuyPriceInverted)
 	// sell side
-	sellOps, _, e2 := s.sellStrat.UpdateWithOps(history, currentState, sellingAOffers)
+	sellOps, _, e2 := s.sellStrat.UpdateWithOps(state)
 
 	// check for errors
 	ops := []build.TransactionMutator{}
@@ -107,7 +102,8 @@ func (s *composeStrategy) UpdateWithOps(
 	}
 
 	// combine ops correctly based on possible crossing offers
-	if newTopBuyPrice != nil && len(sellingAOffers) > 0 && newTopBuyPrice.AsFloat() >= utils.PriceAsFloat(sellingAOffers[0].Price) {
+	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
+	if newTopBuyPrice != nil && len(allOffers.SellingAOffers) > 0 && newTopBuyPrice.AsFloat() >= utils.PriceAsFloat(allOffers.SellingAOffers[0].Price) {
 		ops = append(ops, sellOps...)
 		ops = append(ops, buyOps...)
 	} else {
