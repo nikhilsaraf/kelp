@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -92,7 +93,18 @@ func validateSpread(spread float64) {
 }
 
 // GetLevels impl.
-func (p *balancedLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuote float64) ([]api.Level, error) {
+func (p *balancedLevelProvider) GetLevels(state *api.State) ([]api.Level, error) {
+	// pull data out of the transient state
+	allBalances := *(*state.Transient)[DataKeyBalances].(*DatumBalances)
+	var maxAssetBase, maxAssetQuote float64
+	var ok bool
+	if maxAssetBase, ok = allBalances.Balance[state.Context.AssetBase]; !ok {
+		return nil, fmt.Errorf("framework error: balance for the base asset was not found in the Transient state")
+	}
+	if maxAssetQuote, ok = allBalances.Balance[state.Context.AssetQuote]; !ok {
+		return nil, fmt.Errorf("framework error: balance for the quote asset was not found in the Transient state")
+	}
+
 	_maxAssetBase := maxAssetBase + p.virtualBalanceBase
 	_maxAssetQuote := maxAssetQuote + p.virtualBalanceQuote
 	// represents the amount that was meant to be included in a previous level that we excluded because we skipped that level

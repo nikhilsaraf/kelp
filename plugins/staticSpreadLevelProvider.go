@@ -55,7 +55,7 @@ func makeStaticSpreadLevelProvider(staticLevels []staticLevel, amountOfBase floa
 }
 
 // GetLevels impl.
-func (p *staticSpreadLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuote float64) ([]api.Level, error) {
+func (p *staticSpreadLevelProvider) GetLevels(state *api.State) ([]api.Level, error) {
 	centerPrice, e := p.pf.GetCenterPrice()
 	if e != nil {
 		log.Printf("error: center price couldn't be loaded! | %s\n", e)

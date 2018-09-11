@@ -24,8 +24,6 @@ type sellSideStrategy struct {
 
 	// uninitialized
 	currentLevels []api.Level // levels for current iteration
-	maxAssetBase  float64
-	maxAssetQuote float64
 }
 
 // ensure it implements SideStrategy
@@ -87,14 +85,12 @@ func (s *sellSideStrategy) PruneExistingOffers(state *api.State) ([]build.Transa
 func (s *sellSideStrategy) PreUpdate(state *api.State) error {
 	// pull data out of the transient state
 	allBalances := *(*state.Transient)[DataKeyBalances].(*DatumBalances)
-	if maxAssetBase, ok := allBalances.Balance[state.Context.AssetBase]; ok {
-		s.maxAssetBase = maxAssetBase
-	} else {
+	var maxAssetBase, maxAssetQuote float64
+	var ok bool
+	if maxAssetBase, ok = allBalances.Balance[state.Context.AssetBase]; !ok {
 		return fmt.Errorf("framework error: balance for the base asset was not found in the Transient state")
 	}
-	if maxAssetQuote, ok := allBalances.Balance[state.Context.AssetQuote]; ok {
-		s.maxAssetQuote = maxAssetQuote
-	} else {
+	if maxAssetQuote, ok = allBalances.Balance[state.Context.AssetQuote]; !ok {
 		return fmt.Errorf("framework error: balance for the quote asset was not found in the Transient state")
 	}
 	trustQuote, ok := allBalances.Trust[state.Context.AssetQuote]
@@ -103,8 +99,8 @@ func (s *sellSideStrategy) PreUpdate(state *api.State) error {
 	}
 
 	// don't place orders if we have nothing to sell or if we cannot buy the asset in exchange
-	nothingToSell := s.maxAssetBase == 0
-	lineFull := s.maxAssetQuote == trustQuote
+	nothingToSell := maxAssetBase == 0
+	lineFull := maxAssetQuote == trustQuote
 	if nothingToSell || lineFull {
 		s.currentLevels = []api.Level{}
 		log.Printf("no capacity to place sell orders (nothingToSell = %v, lineFull = %v)\n", nothingToSell, lineFull)
@@ -113,7 +109,7 @@ func (s *sellSideStrategy) PreUpdate(state *api.State) error {
 
 	// load currentLevels only once here
 	var e error
-	s.currentLevels, e = s.levelsProvider.GetLevels(s.maxAssetBase, s.maxAssetQuote)
+	s.currentLevels, e = s.levelsProvider.GetLevels(state)
 	if e != nil {
 		log.Printf("levels couldn't be loaded: %s\n", e)
 		return e
@@ -123,6 +119,7 @@ func (s *sellSideStrategy) PreUpdate(state *api.State) error {
 
 // UpdateWithOps impl
 func (s *sellSideStrategy) UpdateWithOps(state *api.State) (ops []build.TransactionMutator, newTopOffer *model.Number, e error) {
+	// pull data out of the transient state
 	allOffers := (*state.Transient)[DataKeyOffers].(*DatumOffers)
 	var offers []horizon.Offer
 	if s.isBuySide {
@@ -130,10 +127,16 @@ func (s *sellSideStrategy) UpdateWithOps(state *api.State) (ops []build.Transact
 	} else {
 		offers = allOffers.SellingAOffers
 	}
+	allBalances := *(*state.Transient)[DataKeyBalances].(*DatumBalances)
+	var maxAssetBase float64
+	var ok bool
+	if maxAssetBase, ok = allBalances.Balance[state.Context.AssetBase]; !ok {
+		return nil, nil, fmt.Errorf("framework error: balance for the base asset was not found in the Transient state")
+	}
 
 	newTopOffer = nil
 	for i := len(s.currentLevels) - 1; i >= 0; i-- {
-		op := s.updateSellLevel(offers, i)
+		op := s.updateSellLevel(offers, i, maxAssetBase)
 		if op != nil {
 			offer, e := model.NumberFromString(op.MO.Price.String(), 7)
 			if e != nil {
@@ -157,13 +160,13 @@ func (s *sellSideStrategy) PostUpdate(state *api.State) error {
 }
 
 // Selling Base
-func (s *sellSideStrategy) updateSellLevel(offers []horizon.Offer, index int) *build.ManageOfferBuilder {
+func (s *sellSideStrategy) updateSellLevel(offers []horizon.Offer, index int, maxAssetBase float64) *build.ManageOfferBuilder {
 	targetPrice := s.currentLevels[index].Price
 	targetAmount := s.currentLevels[index].Amount
 	if s.isBuySide {
 		targetAmount = *model.NumberFromFloat(targetAmount.AsFloat()/targetPrice.AsFloat(), targetAmount.Precision())
 	}
-	targetAmount = *model.NumberFromFloat(math.Min(targetAmount.AsFloat(), s.maxAssetBase), targetAmount.Precision())
+	targetAmount = *model.NumberFromFloat(math.Min(targetAmount.AsFloat(), maxAssetBase), targetAmount.Precision())
 
 	if len(offers) <= index {
 		if targetPrice.Precision() > utils.SdexPrecision {
