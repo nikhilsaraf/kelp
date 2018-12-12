@@ -1,5 +1,5 @@
 hash: b7868bd29336cb7504bd41be0cb167d401e9475b4513a879b8ea97dbf6c56ee9
-updated: 2018-12-12T05:10:50.670311913-08:00
+updated: 2018-12-12T14:49:36.839684992-08:00
 imports:
 - name: cloud.google.com/go
   version: 793297ec250352b0ece46e103381a0fc3dab95a1
@@ -19,10 +19,8 @@ imports:
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
-- name: github.com/fsnotify/fsnotify
-  version: ccc981bf80385c528a65fbfdd49bf2d8da22aa23
 - name: github.com/go-chi/chi
-  version: def7567e149e3f66f2a3d62c6114e8d1731720c4
+  version: 25354a53cca531cb2efd3f1d3c565d90ff04d802
   subpackages:
   - middleware
 - name: github.com/go-errors/errors
@@ -39,22 +37,14 @@ imports:
   version: 44c6ddd0a2342c386950e880b658017258da92fc
   subpackages:
   - query
-- name: github.com/hashicorp/hcl
-  version: 65a6292f0157eff210d03ed1bf6c59b190b8b906
-  subpackages:
-  - hcl/ast
-  - hcl/parser
-  - hcl/printer
-  - hcl/scanner
-  - hcl/strconv
-  - hcl/token
-  - json/parser
-  - json/scanner
-  - json/token
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/kr/pretty
+  version: e6ac2fc51e89a3249e82157fa0bb7a18ef9dd5bb
 - name: github.com/kr/session
   version: 6f756089c21ec9a4ceb14473bf90d5e3a3e9e303
+- name: github.com/kr/text
+  version: e373e137fafd8abd480af49182dea0513914adb4
 - name: github.com/lechengfan/googleauth
   version: 7595ba02fbce171759c10d69d96e4cd898d1fa93
 - name: github.com/lib/pq
@@ -62,7 +52,7 @@ imports:
   subpackages:
   - oid
 - name: github.com/magiconair/properties
-  version: 7c38529aac7222391b7a2661365177a97e21b998
+  version: 359442d561ca28acd0fe503aa9f075f505bc9ed0
 - name: github.com/manucorporat/sse
   version: ee05b128a739a0fb76c7ebd3ae4810c1de808d6d
 - name: github.com/mitchellh/mapstructure
@@ -86,9 +76,11 @@ imports:
   subpackages:
   - difflib
 - name: github.com/r3labs/sse
-  version: 09476baff516c25990f538366c621299399626e0
+  version: 2f36fb519619e8589fbef5095fbe113c14e7d090
 - name: github.com/rs/cors
-  version: a3460e445dd310dbefee993fe449f2ff9c08ae71
+  version: a62a804a8a009876ca59105f7899938a1349f4b3
+- name: github.com/rs/xhandler
+  version: ed27b6fd65218132ee50cd95f38474a3d8a2cd12
 - name: github.com/segmentio/go-loggly
   version: eb91657e62b25699dd4e84d5562735440d4beace
 - name: github.com/shirou/gopsutil
@@ -106,20 +98,16 @@ imports:
   version: 68cec9f21fbf3ea8d8f98c044bc6ce05f17b267a
   subpackages:
   - hooks/test
-- name: github.com/spf13/afero
-  version: d40851caa0d747393da1ffb28f7f9d8b4eeffebd
-  subpackages:
-  - mem
 - name: github.com/spf13/cast
-  version: 8c9545af88b134710ab1cd196795e7f2388358d7
+  version: 4d07383ffe94b5e5a6fa3af9211374a4507a0184
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/jwalterweatherman
-  version: 94f6ae3ed3bceceafa716478c5fbf8d29ca601a1
+  version: 3d60171a64319ef63c78bd45bd60e6eab1e75f8b
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/spf13/viper
-  version: 6d33b5a963d922d182c91e8a1c88d81fd150cfd4
+  version: db7ff930a189b98d602179d9001d33345f42b8c7
 - name: github.com/StackExchange/wmi
   version: b12b22c5341f0c26d88c4d66176330500e84db68
 - name: github.com/stellar/go
@@ -175,11 +163,6 @@ imports:
   subpackages:
   - unix
   - windows
-- name: golang.org/x/text
-  version: 17bcc049122f272a32787ba38073ee47433023e9
-  subpackages:
-  - transform
-  - unicode/norm
 - name: google.golang.org/appengine
   version: ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06
   subpackages:
@@ -192,8 +175,6 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
-- name: gopkg.in/cenkalti/backoff.v1
-  version: 61153c768f31ee5f130071d08fc82b85208528de
 - name: gopkg.in/yaml.v2
-  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
+  version: 7ad95dd0798a40da1ccdff6dff35fd177b5edf40
 testImports: []

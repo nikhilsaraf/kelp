@@ -4,6 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/interstellar/kelp/support/utils"
@@ -13,13 +21,6 @@ import (
 	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/clients/horizon"
-	"log"
-	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 // global vars
@@ -57,7 +58,6 @@ func Start() {
 
 	// sse, use http://server/events?stream=messages
 	sseServer = sse.New()
-	sseServer.AutoReplay = false // must turn this off or all the pings will replay for every client refresh
 	sseServer.CreateStream("messages")
 	r.Get("/events", sseServer.HTTPHandler)
 
