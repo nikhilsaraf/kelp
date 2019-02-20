@@ -42,6 +42,7 @@ type SDEX struct {
 	simMode                       bool
 	pair                          *model.TradingPair
 	assetMap                      map[model.Asset]horizon.Asset // this is needed until we fully address putting SDEX behind the Exchange interface
+	fixedBaseFee                  uint64
 
 	// uninitialized
 	seqNum       uint64
@@ -84,6 +85,7 @@ func MakeSDEX(
 	simMode bool,
 	pair *model.TradingPair,
 	assetMap map[model.Asset]horizon.Asset,
+	fixedBaseFee uint64,
 ) *SDEX {
 	sdex := &SDEX{
 		API:                           api,
@@ -95,9 +97,10 @@ func MakeSDEX(
 		threadTracker:                 threadTracker,
 		operationalBuffer:             operationalBuffer,
 		operationalBufferNonNativePct: operationalBufferNonNativePct,
-		simMode:  simMode,
-		pair:     pair,
-		assetMap: assetMap,
+		simMode:      simMode,
+		pair:         pair,
+		assetMap:     assetMap,
+		fixedBaseFee: fixedBaseFee,
 	}
 
 	log.Printf("Using network passphrase: %s\n", sdex.Network.Passphrase)
@@ -393,7 +396,11 @@ func (sdex *SDEX) SubmitOps(ops []build.TransactionMutator, asyncCallback func(h
 		sdex.Network,
 		build.SourceAccount{AddressOrSeed: sdex.SourceAccount},
 	}
+	if sdex.fixedBaseFee != 0 {
+		muts = append(muts, build.BaseFee{Amount: sdex.fixedBaseFee})
+	}
 	muts = append(muts, ops...)
+
 	tx, e := build.Transaction(muts...)
 	if e != nil {
 		return errors.Wrap(e, "SubmitOps error: ")

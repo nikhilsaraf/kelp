@@ -54,6 +54,7 @@ func makeSDEXFeed(url string) (*sdexFeed, error) {
 		true,
 		tradingPair,
 		sdexAssetMap,
+		0,
 	)
 
 	return &sdexFeed{

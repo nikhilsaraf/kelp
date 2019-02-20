@@ -24,6 +24,7 @@ type BotConfig struct {
 	SubmitMode             string `valid:"-" toml:"SUBMIT_MODE"`
 	FillTrackerSleepMillis uint32 `valid:"-" toml:"FILL_TRACKER_SLEEP_MILLIS"`
 	HorizonURL             string `valid:"-" toml:"HORIZON_URL"`
+	FixedBaseFee           uint64 `valid:"-" toml:"FIXED_BASE_FEE"`
 	AlertType              string `valid:"-" toml:"ALERT_TYPE"`
 	AlertAPIKey            string `valid:"-" toml:"ALERT_API_KEY"`
 	MonitoringPort         uint16 `valid:"-" toml:"MONITORING_PORT"`

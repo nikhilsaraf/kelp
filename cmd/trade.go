@@ -162,6 +162,7 @@ func init() {
 			*simMode,
 			tradingPair,
 			sdexAssetMap,
+			botConfig.FixedBaseFee,
 		)
 
 		// setting the temp hack variables for the sdex price feeds
