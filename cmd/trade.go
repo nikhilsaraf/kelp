@@ -122,6 +122,13 @@ func init() {
 		// now that we've got the basic messages logged, validate the cli params
 		validateCliParams(l)
 
+		if *fixedIterations == 0 {
+			fixedIterations = nil
+			log.Printf("will run unbounded iterations\n")
+		} else {
+			log.Printf("will run only %d update iterations\n", *fixedIterations)
+		}
+
 		// only log botConfig file here so it can be included in the log file
 		utils.LogConfig(botConfig)
 		l.Infof("Trading %s:%s for %s:%s\n", botConfig.AssetCodeA, botConfig.IssuerA, botConfig.AssetCodeB, botConfig.IssuerB)
@@ -137,6 +144,8 @@ func init() {
 		}
 		// --- start initialization of objects ----
 		threadTracker := multithreading.MakeThreadTracker()
+		isTradingSdex := botConfig.TradingExchange == "" || botConfig.TradingExchange == "sdex"
+		ieif := plugins.MakeIEIF()
 
 		assetBase := botConfig.AssetBase()
 		assetQuote := botConfig.AssetQuote()
@@ -144,13 +153,34 @@ func init() {
 			Base:  model.Asset(utils.Asset2CodeString(assetBase)),
 			Quote: model.Asset(utils.Asset2CodeString(assetQuote)),
 		}
-
 		sdexAssetMap := map[model.Asset]horizon.Asset{
 			tradingPair.Base:  assetBase,
 			tradingPair.Quote: assetQuote,
 		}
+
+		var exchange api.SubmittableExchange
+		if !isTradingSdex {
+			exchangeAPIKeys := []api.ExchangeAPIKey{}
+			for _, apiKey := range botConfig.ExchangeAPIKeys {
+				exchangeAPIKeys = append(exchangeAPIKeys, api.ExchangeAPIKey{
+					Key:    apiKey.Key,
+					Secret: apiKey.Secret,
+				})
+			}
+
+			exchangeAPI, e := plugins.MakeTradingExchange(botConfig.TradingExchange, exchangeAPIKeys, *simMode)
+			if e != nil {
+				logger.Fatal(l, fmt.Errorf("unable to make trading exchange: %s\n", e))
+				return
+			}
+
+			exchange = plugins.MakeBatchedExchange(exchangeAPI, *simMode, botConfig.AssetBase(), botConfig.AssetQuote(), botConfig.TradingAccount())
+		}
+
 		sdex := plugins.MakeSDEX(
 			client,
+			ieif,
+			exchange,
 			botConfig.SourceSecretSeed,
 			botConfig.TradingSecretSeed,
 			botConfig.SourceAccount(),
@@ -163,23 +193,26 @@ func init() {
 			tradingPair,
 			sdexAssetMap,
 		)
+		if isTradingSdex {
+			exchange = sdex
+		}
 
 		// setting the temp hack variables for the sdex price feeds
-		e = plugins.SetPrivateSdexHack(client, utils.ParseNetwork(botConfig.HorizonURL))
+		e = plugins.SetPrivateSdexHack(client, plugins.MakeIEIF(), utils.ParseNetwork(botConfig.HorizonURL))
 		if e != nil {
 			l.Info("")
 			l.Errorf("%s", e)
 			// we want to delete all the offers and exit here since there is something wrong with our setup
-			deleteAllOffersAndExit(l, botConfig, client, sdex)
+			deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 		}
 
 		dataKey := model.MakeSortedBotKey(assetBase, assetQuote)
-		strat, e := plugins.MakeStrategy(sdex, tradingPair, &assetBase, &assetQuote, *strategy, *stratConfigPath, *simMode)
+		strat, e := plugins.MakeStrategy(sdex, ieif, tradingPair, &assetBase, &assetQuote, *strategy, *stratConfigPath, *simMode)
 		if e != nil {
 			l.Info("")
 			l.Errorf("%s", e)
 			// we want to delete all the offers and exit here since there is something wrong with our setup
-			deleteAllOffersAndExit(l, botConfig, client, sdex)
+			deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 		}
 
 		submitMode, e := api.ParseSubmitMode(botConfig.SubmitMode)
@@ -187,7 +220,7 @@ func init() {
 			log.Println()
 			log.Println(e)
 			// we want to delete all the offers and exit here since there is something wrong with our setup
-			deleteAllOffersAndExit(l, botConfig, client, sdex)
+			deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 		}
 		timeController := plugins.MakeIntervalTimeController(
 			time.Duration(botConfig.TickIntervalSeconds)*time.Second,
@@ -211,9 +244,13 @@ func init() {
 		)
 		// --- end initialization of objects ---
 
-		l.Info("validating trustlines...")
-		validateTrustlines(l, client, &botConfig)
-		l.Info("trustlines valid")
+		if isTradingSdex {
+			log.Printf("validating trustlines...\n")
+			validateTrustlines(l, client, &botConfig)
+			l.Info("trustlines valid")
+		} else {
+			l.Info("no need to validate trustlines because we're not using SDEX as the trading exchange")
+		}
 
 		// --- start initialization of services ---
 		if botConfig.MonitoringPort != 0 {
@@ -226,7 +263,7 @@ func init() {
 					// we want to delete all the offers and exit here because we don't want the bot to run if monitoring isn't working
 					// if monitoring is desired but not working properly, we want the bot to be shut down and guarantee that there
 					// aren't outstanding offers.
-					deleteAllOffersAndExit(l, botConfig, client, sdex)
+					deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 				}
 			}()
 		}
@@ -236,7 +273,7 @@ func init() {
 			l.Info("")
 			l.Info("problem encountered while instantiating the fill tracker:")
 			l.Errorf("%s", e)
-			deleteAllOffersAndExit(l, botConfig, client, sdex)
+			deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 		}
 		if botConfig.FillTrackerSleepMillis != 0 {
 			fillTracker := plugins.MakeFillTracker(tradingPair, threadTracker, sdex, botConfig.FillTrackerSleepMillis)
@@ -256,14 +293,14 @@ func init() {
 					l.Info("problem encountered while running the fill tracker:")
 					l.Errorf("%s", e)
 					// we want to delete all the offers and exit here because we don't want the bot to run if fill tracking isn't working
-					deleteAllOffersAndExit(l, botConfig, client, sdex)
+					deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 				}
 			}()
 		} else if strategyFillHandlers != nil && len(strategyFillHandlers) > 0 {
 			l.Info("")
 			l.Error("error: strategy has FillHandlers but fill tracking was disabled (set FILL_TRACKER_SLEEP_MILLIS to a non-zero value)")
 			// we want to delete all the offers and exit here because we don't want the bot to run if fill tracking isn't working
-			deleteAllOffersAndExit(l, botConfig, client, sdex)
+			deleteAllOffersAndExit(l, botConfig, client, sdex, exchange)
 		}
 		// --- end initialization of services ---
 
@@ -288,7 +325,7 @@ func startMonitoringServer(l logger.Logger, botConfig trader.BotConfig) error {
 		return fmt.Errorf("unable to make metrics recorder for the health endpoint: %s", e)
 	}
 
-	healthEndpoint, e := monitoring.MakeMetricsEndpoint("/health", healthMetrics, networking.NoAuth)
+	healthEndpoint, e := monitoring.MakeMetricsEndpoint("/healthCheck", healthMetrics, networking.NoAuth)
 	if e != nil {
 		return fmt.Errorf("unable to make /health endpoint: %s", e)
 	}
@@ -336,7 +373,7 @@ func validateTrustlines(l logger.Logger, client *horizon.Client, botConfig *trad
 	}
 }
 
-func deleteAllOffersAndExit(l logger.Logger, botConfig trader.BotConfig, client *horizon.Client, sdex *plugins.SDEX) {
+func deleteAllOffersAndExit(l logger.Logger, botConfig trader.BotConfig, client *horizon.Client, sdex *plugins.SDEX, submittableX api.SubmittableExchange) {
 	l.Info("")
 	l.Info("deleting all offers and then exiting...")
 
@@ -352,7 +389,7 @@ func deleteAllOffersAndExit(l logger.Logger, botConfig trader.BotConfig, client 
 	l.Infof("created %d operations to delete offers\n", len(dOps))
 
 	if len(dOps) > 0 {
-		e := sdex.SubmitOps(dOps, func(hash string, e error) {
+		e := submittableX.SubmitOps(dOps, func(hash string, e error) {
 			if e != nil {
 				logger.Fatal(l, e)
 				return
