@@ -18,6 +18,27 @@ func JSONRequest(
 	headers map[string]string,
 	responseData interface{}, // the passed in responseData should be a pointer
 ) error {
+	return Request(
+		httpClient,
+		method,
+		reqURL,
+		data,
+		headers,
+		responseData,
+		true,
+	)
+}
+
+// Request submits an HTTP web request and parses the response into the responseData object
+func Request(
+	httpClient *http.Client,
+	method string,
+	reqURL string,
+	data string,
+	headers map[string]string,
+	responseData interface{}, // the passed in responseData should be a pointer
+	requireJSON bool,
+) error {
 	// create http request
 	req, e := http.NewRequest(method, reqURL, strings.NewReader(data))
 	if e != nil {
@@ -43,13 +64,16 @@ func JSONRequest(
 	}
 	bodyString := string(body)
 
-	// ensure Content-Type is json
-	contentType, _, e := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-	if e != nil {
-		return fmt.Errorf("could not read 'Content-Type' header in http response: %s | response body: %s", e, bodyString)
-	}
-	if contentType != "application/json" {
-		return fmt.Errorf("invalid 'Content-Type' header in http response ('%s'), expecting 'application/json', response body: %s", contentType, bodyString)
+	if requireJSON {
+		// ensure Content-Type is json
+		var contentType string
+		contentType, _, e = mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		if e != nil {
+			return fmt.Errorf("could not read 'Content-Type' header in http response: %s | response body: %s", e, bodyString)
+		}
+		if contentType != "application/json" {
+			return fmt.Errorf("invalid 'Content-Type' header in http response ('%s'), expecting 'application/json', response body: %s", contentType, bodyString)
+		}
 	}
 
 	// TODO move this out of this low-level layer

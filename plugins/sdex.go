@@ -397,7 +397,11 @@ func (sdex *SDEX) SubmitOps(ops []build.TransactionMutator, asyncCallback func(h
 		build.SourceAccount{AddressOrSeed: sdex.SourceAccount},
 	}
 	if sdex.fixedBaseFee != 0 {
-		muts = append(muts, build.BaseFee{Amount: sdex.fixedBaseFee})
+		baseFee, e := getBaseFee(sdex.API.URL, sdex.fixedBaseFee)
+		if e != nil {
+			return fmt.Errorf("SubmitOps error with base fee: %s", e)
+		}
+		muts = append(muts, build.BaseFee{Amount: baseFee})
 	}
 	muts = append(muts, ops...)
 
