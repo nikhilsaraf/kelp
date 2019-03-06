@@ -161,7 +161,8 @@ func init() {
 				})
 			}
 
-			exchangeAPI, e := plugins.MakeTradingExchange(botConfig.TradingExchange, exchangeAPIKeys, *simMode)
+			var exchangeAPI api.Exchange
+			exchangeAPI, e = plugins.MakeTradingExchange(botConfig.TradingExchange, exchangeAPIKeys, *simMode)
 			if e != nil {
 				logger.Fatal(l, fmt.Errorf("unable to make trading exchange: %s\n", e))
 				return
@@ -227,11 +228,13 @@ func init() {
 		)
 		bot := trader.MakeBot(
 			client,
+			ieif,
 			botConfig.AssetBase(),
 			botConfig.AssetQuote(),
 			tradingPair,
 			botConfig.TradingAccount(),
 			sdex,
+			exchange,
 			strat,
 			timeController,
 			botConfig.DeleteCyclesThreshold,
