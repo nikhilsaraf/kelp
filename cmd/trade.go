@@ -122,13 +122,6 @@ func init() {
 		// now that we've got the basic messages logged, validate the cli params
 		validateCliParams(l)
 
-		if *fixedIterations == 0 {
-			fixedIterations = nil
-			log.Printf("will run unbounded iterations\n")
-		} else {
-			log.Printf("will run only %d update iterations\n", *fixedIterations)
-		}
-
 		// only log botConfig file here so it can be included in the log file
 		utils.LogConfig(botConfig)
 		l.Infof("Trading %s:%s for %s:%s\n", botConfig.AssetCodeA, botConfig.IssuerA, botConfig.AssetCodeB, botConfig.IssuerB)
