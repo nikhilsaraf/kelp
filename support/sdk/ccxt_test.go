@@ -279,26 +279,30 @@ func TestFetchMyTrades(t *testing.T) {
 	bittrexFields := []string{"amount", "datetime", "id", "price", "side", "symbol", "timestamp", "type"}
 
 	for _, k := range []struct {
-		exchangeName   string
-		tradingPair    string
-		expectedFields []string
-		apiKey         api.ExchangeAPIKey
+		exchangeName     string
+		tradingPair      string
+		maybeCursorStart interface{}
+		expectedFields   []string
+		apiKey           api.ExchangeAPIKey
 	}{
 		{
-			exchangeName:   "poloniex",
-			tradingPair:    "BTC/USDT",
-			expectedFields: poloniexFields,
-			apiKey:         api.ExchangeAPIKey{},
+			exchangeName:     "poloniex",
+			tradingPair:      "BTC/USDT",
+			maybeCursorStart: nil,
+			expectedFields:   poloniexFields,
+			apiKey:           api.ExchangeAPIKey{},
 		}, {
-			exchangeName:   "binance",
-			tradingPair:    "XLM/USDT",
-			expectedFields: binanceFields,
-			apiKey:         api.ExchangeAPIKey{},
+			exchangeName:     "binance",
+			tradingPair:      "XLM/USDT",
+			maybeCursorStart: nil,
+			expectedFields:   binanceFields,
+			apiKey:           api.ExchangeAPIKey{},
 		}, {
-			exchangeName:   "bittrex",
-			tradingPair:    "XLM/BTC",
-			expectedFields: bittrexFields,
-			apiKey:         api.ExchangeAPIKey{},
+			exchangeName:     "bittrex",
+			tradingPair:      "XLM/BTC",
+			maybeCursorStart: nil,
+			expectedFields:   bittrexFields,
+			apiKey:           api.ExchangeAPIKey{},
 		},
 	} {
 		t.Run(k.exchangeName, func(t *testing.T) {
@@ -308,7 +312,7 @@ func TestFetchMyTrades(t *testing.T) {
 				return
 			}
 
-			trades, e := c.FetchMyTrades(k.tradingPair)
+			trades, e := c.FetchMyTrades(k.tradingPair, 50, k.maybeCursorStart)
 			if e != nil {
 				assert.Fail(t, fmt.Sprintf("error when fetching my trades: %s", e))
 				return
