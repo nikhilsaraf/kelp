@@ -47,7 +47,7 @@ func MakePriceFeed(feedType string, url string) (api.PriceFeed, error) {
 		// [0] = exchangeType, [1] = base, [2] = quote
 		urlParts := strings.Split(url, "/")
 		// [0] = exchangeName, optional [1] = modifier
-		exchangeParts := strings.Split(url, ":")
+		exchangeParts := strings.Split(urlParts[0], ":")
 		exchangeName := exchangeParts[0]
 		exchangeModifier := ""
 		if len(exchangeParts) == 2 {
