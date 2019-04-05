@@ -46,7 +46,15 @@ func MakePriceFeed(feedType string, url string) (api.PriceFeed, error) {
 	case "exchange":
 		// [0] = exchangeType, [1] = base, [2] = quote
 		urlParts := strings.Split(url, "/")
-		exchange, e := MakeExchange(urlParts[0], true)
+		// [0] = exchangeName, optional [1] = modifier
+		exchangeParts := strings.Split(url, ":")
+		exchangeName := exchangeParts[0]
+		exchangeModifier := ""
+		if len(exchangeParts) == 2 {
+			exchangeModifier = exchangeParts[1]
+		}
+
+		exchange, e := MakeExchange(exchangeName, true)
 		if e != nil {
 			return nil, fmt.Errorf("cannot make priceFeed because of an error when making the '%s' exchange: %s", urlParts[0], e)
 		}
@@ -63,7 +71,7 @@ func MakePriceFeed(feedType string, url string) (api.PriceFeed, error) {
 			Quote: quoteAsset,
 		}
 		tickerAPI := api.TickerAPI(exchange)
-		return newExchangeFeed(url, &tickerAPI, &tradingPair), nil
+		return newExchangeFeed(url, &tickerAPI, &tradingPair, exchangeModifier), nil
 	case "sdex":
 		sdex, e := makeSDEXFeed(url)
 		if e != nil {
