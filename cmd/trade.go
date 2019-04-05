@@ -453,16 +453,16 @@ func startMonitoringServer(l logger.Logger, botConfig trader.BotConfig) error {
 	if e != nil {
 		return fmt.Errorf("unable to make /health endpoint: %s", e)
 	}
-	kelpMetrics, e := monitoring.MakeMetricsRecorder(nil)
-	if e != nil {
-		return fmt.Errorf("unable to make metrics recorder for the /metrics endpoint: %s", e)
-	}
+	// kelpMetrics, e := monitoring.MakeMetricsRecorder(nil)
+	// if e != nil {
+	// 	return fmt.Errorf("unable to make metrics recorder for the /metrics endpoint: %s", e)
+	// }
 
-	metricsEndpoint, e := monitoring.MakeMetricsEndpoint("/metrics", kelpMetrics, networking.GoogleAuth)
-	if e != nil {
-		return fmt.Errorf("unable to make /metrics endpoint: %s", e)
-	}
-	server, e := networking.MakeServer(serverConfig, []networking.Endpoint{healthEndpoint, metricsEndpoint})
+	// metricsEndpoint, e := monitoring.MakeMetricsEndpoint("/metrics", kelpMetrics, networking.GoogleAuth)
+	// if e != nil {
+	// 	return fmt.Errorf("unable to make /metrics endpoint: %s", e)
+	// }
+	server, e := networking.MakeServer(serverConfig, []networking.Endpoint{healthEndpoint})
 	if e != nil {
 		return fmt.Errorf("unable to initialize the metrics server: %s", e)
 	}
