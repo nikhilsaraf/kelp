@@ -37,7 +37,7 @@ func init() {
 
 	serverCmd.Run = func(ccmd *cobra.Command, args []string) {
 		kos := kelpos.GetKelpOS()
-		s, e := backend.MakeAPIServer(kos)
+		s, e := backend.MakeAPIServer(kos, RunTradeCmd)
 		if e != nil {
 			panic(e)
 		}

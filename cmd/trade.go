@@ -20,6 +20,7 @@ import (
 	"github.com/stellar/kelp/model"
 	"github.com/stellar/kelp/plugins"
 	"github.com/stellar/kelp/query"
+	"github.com/stellar/kelp/support/kelpos"
 	"github.com/stellar/kelp/support/logger"
 	"github.com/stellar/kelp/support/monitoring"
 	"github.com/stellar/kelp/support/networking"
@@ -61,33 +62,20 @@ func logPanic(l logger.Logger) {
 	}
 }
 
-type inputs struct {
-	botConfigPath                 *string
-	strategy                      *string
-	stratConfigPath               *string
-	operationalBuffer             *float64
-	operationalBufferNonNativePct *float64
-	withIPC                       *bool
-	simMode                       *bool
-	logPrefix                     *string
-	fixedIterations               *uint64
-	noHeaders                     *bool
-}
-
-func validateCliParams(l logger.Logger, options inputs) {
-	if *options.operationalBuffer < 0 {
-		panic(fmt.Sprintf("invalid operationalBuffer argument, must be non-negative: %f", *options.operationalBuffer))
+func validateCliParams(l logger.Logger, options kelpos.Inputs) {
+	if *options.OperationalBuffer < 0 {
+		panic(fmt.Sprintf("invalid operationalBuffer argument, must be non-negative: %f", *options.OperationalBuffer))
 	}
 
-	if *options.operationalBufferNonNativePct < 0 || *options.operationalBufferNonNativePct > 1 {
-		panic(fmt.Sprintf("invalid operationalBufferNonNativePct argument, must be between 0 and 1 inclusive: %f", *options.operationalBufferNonNativePct))
+	if *options.OperationalBufferNonNativePct < 0 || *options.OperationalBufferNonNativePct > 1 {
+		panic(fmt.Sprintf("invalid operationalBufferNonNativePct argument, must be between 0 and 1 inclusive: %f", *options.OperationalBufferNonNativePct))
 	}
 
-	if *options.fixedIterations == 0 {
-		options.fixedIterations = nil
+	if *options.FixedIterations == 0 {
+		options.FixedIterations = nil
 		l.Info("will run unbounded iterations")
 	} else {
-		l.Infof("will run only %d update iterations\n", *options.fixedIterations)
+		l.Infof("will run only %d update iterations\n", *options.FixedIterations)
 	}
 }
 
@@ -113,19 +101,19 @@ func validatePrecisionConfig(l logger.Logger, isTradingSdex bool, precisionField
 }
 
 func init() {
-	options := inputs{}
+	options := kelpos.Inputs{}
 	// short flags
-	options.botConfigPath = tradeCmd.Flags().StringP("botConf", "c", "", "(required) trading bot's basic config file path")
-	options.strategy = tradeCmd.Flags().StringP("strategy", "s", "", "(required) type of strategy to run")
-	options.stratConfigPath = tradeCmd.Flags().StringP("stratConf", "f", "", "strategy config file path")
+	options.BotConfigPath = tradeCmd.Flags().StringP("botConf", "c", "", "(required) trading bot's basic config file path")
+	options.Strategy = tradeCmd.Flags().StringP("strategy", "s", "", "(required) type of strategy to run")
+	options.StratConfigPath = tradeCmd.Flags().StringP("stratConf", "f", "", "strategy config file path")
 	// long-only flags
-	options.operationalBuffer = tradeCmd.Flags().Float64("operationalBuffer", 20, "buffer of native XLM to maintain beyond minimum account balance requirement")
-	options.operationalBufferNonNativePct = tradeCmd.Flags().Float64("operationalBufferNonNativePct", 0.001, "buffer of non-native assets to maintain as a percentage (0.001 = 0.1%)")
-	options.withIPC = tradeCmd.Flags().Bool("with-ipc", false, "enable IPC communication when spawned as a child process from the GUI")
-	options.simMode = tradeCmd.Flags().Bool("sim", false, "simulate the bot's actions without placing any trades")
-	options.logPrefix = tradeCmd.Flags().StringP("log", "l", "", "log to a file (and stdout) with this prefix for the filename")
-	options.fixedIterations = tradeCmd.Flags().Uint64("iter", 0, "only run the bot for the first N iterations (defaults value 0 runs unboundedly)")
-	options.noHeaders = tradeCmd.Flags().Bool("no-headers", false, "do not set X-App-Name and X-App-Version headers on requests to horizon")
+	options.OperationalBuffer = tradeCmd.Flags().Float64("operationalBuffer", 20, "buffer of native XLM to maintain beyond minimum account balance requirement")
+	options.OperationalBufferNonNativePct = tradeCmd.Flags().Float64("operationalBufferNonNativePct", 0.001, "buffer of non-native assets to maintain as a percentage (0.001 = 0.1%)")
+	options.WithIPC = tradeCmd.Flags().Bool("with-ipc", false, "enable IPC communication when spawned as a child process from the GUI")
+	options.SimMode = tradeCmd.Flags().Bool("sim", false, "simulate the bot's actions without placing any trades")
+	options.LogPrefix = tradeCmd.Flags().StringP("log", "l", "", "log to a file (and stdout) with this prefix for the filename")
+	options.FixedIterations = tradeCmd.Flags().Uint64("iter", 0, "only run the bot for the first N iterations (defaults value 0 runs unboundedly)")
+	options.NoHeaders = tradeCmd.Flags().Bool("no-headers", false, "do not set X-App-Name and X-App-Version headers on requests to horizon")
 
 	requiredFlag("botConf")
 	requiredFlag("strategy")
@@ -134,13 +122,13 @@ func init() {
 	tradeCmd.Flags().SortFlags = false
 
 	tradeCmd.Run = func(ccmd *cobra.Command, args []string) {
-		runTradeCmd(options)
+		RunTradeCmd(options)
 	}
 }
 
-func makeStartupMessage(options inputs) string {
+func makeStartupMessage(options kelpos.Inputs) string {
 	startupMessage := "Starting Kelp Trader: " + version + " [" + gitHash + "]"
-	if *options.simMode {
+	if *options.SimMode {
 		startupMessage += " (simulation mode)"
 	}
 	return startupMessage
@@ -163,16 +151,16 @@ func makeFeeFn(l logger.Logger, botConfig trader.BotConfig, newClient *horizoncl
 	return feeFn
 }
 
-func readBotConfig(l logger.Logger, options inputs) trader.BotConfig {
+func readBotConfig(l logger.Logger, options kelpos.Inputs) trader.BotConfig {
 	var botConfig trader.BotConfig
-	e := config.Read(*options.botConfigPath, &botConfig)
-	utils.CheckConfigError(botConfig, e, *options.botConfigPath)
+	e := config.Read(*options.BotConfigPath, &botConfig)
+	utils.CheckConfigError(botConfig, e, *options.BotConfigPath)
 	e = botConfig.Init()
 	if e != nil {
 		logger.Fatal(l, e)
 	}
 
-	if *options.logPrefix != "" {
+	if *options.LogPrefix != "" {
 		setLogFile(l, options, botConfig)
 	}
 
@@ -190,7 +178,7 @@ func readBotConfig(l logger.Logger, options inputs) trader.BotConfig {
 func makeExchangeShimSdex(
 	l logger.Logger,
 	botConfig trader.BotConfig,
-	options inputs,
+	options kelpos.Inputs,
 	client *horizon.Client,
 	newClient *horizonclient.Client,
 	ieif *plugins.IEIF,
@@ -219,13 +207,13 @@ func makeExchangeShimSdex(
 
 		exchangeAPIKeys := botConfig.ExchangeAPIKeys.ToExchangeAPIKeys()
 		var exchangeAPI api.Exchange
-		exchangeAPI, e = plugins.MakeTradingExchange(botConfig.TradingExchange, exchangeAPIKeys, exchangeParams, exchangeHeaders, *options.simMode)
+		exchangeAPI, e = plugins.MakeTradingExchange(botConfig.TradingExchange, exchangeAPIKeys, exchangeParams, exchangeHeaders, *options.SimMode)
 		if e != nil {
 			logger.Fatal(l, fmt.Errorf("unable to make trading exchange: %s", e))
 			return nil, nil
 		}
 
-		exchangeShim = plugins.MakeBatchedExchange(exchangeAPI, *options.simMode, botConfig.AssetBase(), botConfig.AssetQuote(), botConfig.TradingAccount())
+		exchangeShim = plugins.MakeBatchedExchange(exchangeAPI, *options.SimMode, botConfig.AssetBase(), botConfig.AssetQuote(), botConfig.TradingAccount())
 
 		// update precision overrides
 		exchangeShim.OverrideOrderConstraints(tradingPair, model.MakeOrderConstraintsOverride(
@@ -270,9 +258,9 @@ func makeExchangeShimSdex(
 		botConfig.TradingAccount(),
 		network,
 		threadTracker,
-		*options.operationalBuffer,
-		*options.operationalBufferNonNativePct,
-		*options.simMode,
+		*options.OperationalBuffer,
+		*options.OperationalBufferNonNativePct,
+		*options.SimMode,
 		tradingPair,
 		sdexAssetMap,
 		feeFn,
@@ -295,19 +283,10 @@ func makeStrategy(
 	assetQuote horizon.Asset,
 	ieif *plugins.IEIF,
 	tradingPair *model.TradingPair,
-	options inputs,
+	options kelpos.Inputs,
 	threadTracker *multithreading.ThreadTracker,
 ) api.Strategy {
-	// setting the temp hack variables for the sdex price feeds
-	e := plugins.SetPrivateSdexHack(client, plugins.MakeIEIF(true), network)
-	if e != nil {
-		l.Info("")
-		l.Errorf("%s", e)
-		// we want to delete all the offers and exit here since there is something wrong with our setup
-		deleteAllOffersAndExit(l, botConfig, client, sdex, exchangeShim, threadTracker)
-	}
-
-	strategy, e := plugins.MakeStrategy(sdex, ieif, tradingPair, &assetBase, &assetQuote, *options.strategy, *options.stratConfigPath, *options.simMode)
+	strategy, e := plugins.MakeStrategy(sdex, ieif, tradingPair, &assetBase, &assetQuote, *options.Strategy, *options.StratConfigPath, *options.SimMode)
 	if e != nil {
 		l.Info("")
 		l.Errorf("%s", e)
@@ -327,7 +306,7 @@ func makeBot(
 	tradingPair *model.TradingPair,
 	strategy api.Strategy,
 	threadTracker *multithreading.ThreadTracker,
-	options inputs,
+	options kelpos.Inputs,
 ) *trader.Trader {
 	timeController := plugins.MakeIntervalTimeController(
 		time.Duration(botConfig.TickIntervalSeconds)*time.Second,
@@ -359,7 +338,7 @@ func makeBot(
 		botConfig.DeleteCyclesThreshold,
 		submitMode,
 		threadTracker,
-		options.fixedIterations,
+		options.FixedIterations,
 		dataKey,
 		alert,
 	)
@@ -378,7 +357,8 @@ func convertDeprecatedBotConfigValues(l logger.Logger, botConfig trader.BotConfi
 	return botConfig
 }
 
-func runTradeCmd(options inputs) {
+// RunTradeCmd runs the logic to start trading with the bot
+func RunTradeCmd(options kelpos.Inputs) {
 	l := logger.MakeBasicLogger()
 	botConfig := readBotConfig(l, options)
 	botConfig = convertDeprecatedBotConfigValues(l, botConfig)
@@ -402,7 +382,7 @@ func runTradeCmd(options inputs) {
 		HorizonURL: botConfig.HorizonURL + "/",
 		HTTP:       http.DefaultClient,
 	}
-	if !*options.noHeaders {
+	if !*options.NoHeaders {
 		client.AppName = "kelp"
 		client.AppVersion = version
 		newClient.AppName = "kelp"
@@ -496,7 +476,7 @@ func runTradeCmd(options inputs) {
 	)
 	startQueryServer(
 		l,
-		*options.strategy,
+		*options.Strategy,
 		strategy,
 		botConfig,
 		client,
@@ -608,11 +588,11 @@ func startQueryServer(
 	exchangeShim api.ExchangeShim,
 	tradingPair *model.TradingPair,
 	threadTracker *multithreading.ThreadTracker,
-	options *inputs,
+	options *kelpos.Inputs,
 ) {
 	// only start query server (with IPC) if specifically instructed to so so from the command line.
 	// File descriptors in the IPC receiver will be invalid and will crash the bot if the other end of the pipe does not exist.
-	if !*options.withIPC {
+	if !*options.WithIPC {
 		return
 	}
 
@@ -722,11 +702,11 @@ func deleteAllOffersAndExit(
 	}
 }
 
-func setLogFile(l logger.Logger, options inputs, botConfig trader.BotConfig) {
+func setLogFile(l logger.Logger, options kelpos.Inputs, botConfig trader.BotConfig) {
 	t := time.Now().Format("20060102T150405MST")
-	fileName := fmt.Sprintf("%s_%s_%s_%s_%s_%s.log", *options.logPrefix, botConfig.AssetCodeA, botConfig.IssuerA, botConfig.AssetCodeB, botConfig.IssuerB, t)
+	fileName := fmt.Sprintf("%s_%s_%s_%s_%s_%s.log", *options.LogPrefix, botConfig.AssetCodeA, botConfig.IssuerA, botConfig.AssetCodeB, botConfig.IssuerB, t)
 	if !botConfig.IsTradingSdex() {
-		fileName = fmt.Sprintf("%s_%s_%s_%s.log", *options.logPrefix, botConfig.AssetCodeA, botConfig.AssetCodeB, t)
+		fileName = fmt.Sprintf("%s_%s_%s_%s.log", *options.LogPrefix, botConfig.AssetCodeA, botConfig.AssetCodeB, t)
 	}
 
 	f, e := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)

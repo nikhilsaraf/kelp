@@ -14,15 +14,16 @@ import (
 
 // APIServer is an instance of the API service
 type APIServer struct {
-	dirPath    string
-	binPath    string
-	configsDir string
-	logsDir    string
-	kos        *kelpos.KelpOS
+	dirPath     string
+	binPath     string
+	configsDir  string
+	logsDir     string
+	kos         *kelpos.KelpOS
+	runTradeCmd func(kelpos.Inputs)
 }
 
 // MakeAPIServer is a factory method
-func MakeAPIServer(kos *kelpos.KelpOS) (*APIServer, error) {
+func MakeAPIServer(kos *kelpos.KelpOS, runTradeCmd func(kelpos.Inputs)) (*APIServer, error) {
 	binPath, e := filepath.Abs(os.Args[0])
 	if e != nil {
 		return nil, fmt.Errorf("could not get binPath of currently running binary: %s", e)
@@ -33,11 +34,12 @@ func MakeAPIServer(kos *kelpos.KelpOS) (*APIServer, error) {
 	logsDir := dirPath + "/ops/logs"
 
 	return &APIServer{
-		dirPath:    dirPath,
-		binPath:    binPath,
-		configsDir: configsDir,
-		logsDir:    logsDir,
-		kos:        kos,
+		dirPath:     dirPath,
+		binPath:     binPath,
+		configsDir:  configsDir,
+		logsDir:     logsDir,
+		kos:         kos,
+		runTradeCmd: runTradeCmd,
 	}, nil
 }
 

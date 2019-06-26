@@ -43,20 +43,10 @@ func makeSDEXFeed(url string) (*sdexFeed, error) {
 		tradingPair.Quote: *quoteAsset,
 	}
 
-	var api *horizon.Client
-	var ieif *IEIF
-	var network build.Network
-	if privateSdexHackVar != nil {
-		api = privateSdexHackVar.API
-		ieif = privateSdexHackVar.Ieif
-		network = privateSdexHackVar.Network
-	} else {
-		// use production network by default
-		api = horizon.DefaultPublicNetClient
-		ieif = MakeIEIF(true)
-		network = build.PublicNetwork
-	}
-
+	// use production network by default
+	api := horizon.DefaultPublicNetClient
+	ieif := MakeIEIF(true)
+	network := build.PublicNetwork
 	sdex := MakeSDEX(
 		api,
 		ieif,
