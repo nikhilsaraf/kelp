@@ -34,6 +34,7 @@ type BotConfig struct {
 	HorizonURL                       string     `valid:"-" toml:"HORIZON_URL"`
 	Fee                              *FeeConfig `valid:"-" toml:"FEE"`
 	MinCentralizedBaseVolume         float64    `valid:"-" toml:"MIN_CENTRALIZED_BASE_VOLUME"`
+	SqlDbPath                        string     `valid:"-" toml:"SQL_DB_PATH"`
 	AlertType                        string     `valid:"-" toml:"ALERT_TYPE"`
 	AlertAPIKey                      string     `valid:"-" toml:"ALERT_API_KEY"`
 	MonitoringPort                   uint16     `valid:"-" toml:"MONITORING_PORT"`

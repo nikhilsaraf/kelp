@@ -1,5 +1,5 @@
-hash: c1a6fe42c2e0796f29822018134adc2401292b654fec58b7d790daafceec2585
-updated: 2019-04-03T12:27:32.117314051-07:00
+hash: 8191585be558e1e725be674a1dba62e5cafa8d09b782b021dd3fa3db647f4b5e
+updated: 2019-06-28T14:28:49.963622978-07:00
 imports:
 - name: cloud.google.com/go
   version: 793297ec250352b0ece46e103381a0fc3dab95a1
@@ -43,6 +43,8 @@ imports:
   version: 359442d561ca28acd0fe503aa9f075f505bc9ed0
 - name: github.com/manucorporat/sse
   version: ee05b128a739a0fb76c7ebd3ae4810c1de808d6d
+- name: github.com/mattn/go-sqlite3
+  version: c7c4067b79cc51e6dfdcef5c702e74b1e0fa7c75
 - name: github.com/mitchellh/mapstructure
   version: 3536a929edddb9a5b34bd6861dc4a9647cb459fe
 - name: github.com/nikhilsaraf/go-tools

@@ -40,3 +40,5 @@ import:
   version: a26df67722de7fcf1a8e22cd934e63e553dd3875
 - package: github.com/mitchellh/mapstructure
   version: v1.1.2
+- package: github.com/mattn/go-sqlite3
+  version: 1.10.0
