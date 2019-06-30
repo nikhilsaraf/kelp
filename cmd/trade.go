@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -256,7 +257,11 @@ func makeStrategy(
 		deleteAllOffersAndExit(l, botConfig, client, sdex, exchangeShim, threadTracker)
 	}
 
-	strategy, e := plugins.MakeStrategy(sdex, ieif, tradingPair, &assetBase, &assetQuote, *options.strategy, *options.stratConfigPath, *options.simMode)
+	var tradesDb *sql.DB
+	if botConfig.SqlDbPath != "" {
+		tradesDb, _ = sql.Open("sqlite3", botConfig.SqlDbPath)
+	}
+	strategy, e := plugins.MakeStrategy(sdex, ieif, tradingPair, &assetBase, &assetQuote, *options.strategy, *options.stratConfigPath, *options.simMode, tradesDb)
 	if e != nil {
 		l.Info("")
 		l.Errorf("%s", e)

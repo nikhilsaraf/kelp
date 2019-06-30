@@ -1,12 +1,12 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
-
-	"github.com/stellar/kelp/model"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/kelp/api"
+	"github.com/stellar/kelp/model"
 	"github.com/stellar/kelp/support/utils"
 )
 
@@ -18,10 +18,12 @@ type sellConfig struct {
 	DataFeedBURL           string        `valid:"-" toml:"DATA_FEED_B_URL"`
 	PriceTolerance         float64       `valid:"-" toml:"PRICE_TOLERANCE"`
 	AmountTolerance        float64       `valid:"-" toml:"AMOUNT_TOLERANCE"`
-	AmountOfABase          float64       `valid:"-" toml:"AMOUNT_OF_A_BASE"` // the size of order
+	AmountOfABase          float64       `valid:"-" toml:"AMOUNT_OF_A_BASE"` // the size of order to keep on either side
 	RateOffsetPercent      float64       `valid:"-" toml:"RATE_OFFSET_PERCENT"`
 	RateOffset             float64       `valid:"-" toml:"RATE_OFFSET"`
 	RateOffsetPercentFirst bool          `valid:"-" toml:"RATE_OFFSET_PERCENT_FIRST"`
+	MaxDailySell           float64       `valid:"-" toml:"MAX_DAILY_SELL"`
+	MaxDailySellAssetType  string        `valid:"-" toml:"MAX_DAILY_SELL_ASSET_TYPE"`
 	Levels                 []staticLevel `valid:"-" toml:"LEVELS"`
 }
 
@@ -38,6 +40,7 @@ func makeSellStrategy(
 	assetBase *horizon.Asset,
 	assetQuote *horizon.Asset,
 	config *sellConfig,
+	tradesDB *sql.DB,
 ) (api.Strategy, error) {
 	pf, e := MakeFeedPair(
 		config.DataTypeA,
@@ -55,13 +58,27 @@ func makeSellStrategy(
 		absolute:     config.RateOffset,
 		percentFirst: config.RateOffsetPercentFirst,
 	}
+	maxDailySell := &MaxDailySell{
+		assetType: config.MaxDailySellAssetType,
+		amount:    config.MaxDailySell,
+	}
 	sellSideStrategy := makeSellSideStrategy(
 		sdex,
 		orderConstraints,
 		ieif,
 		assetBase,
 		assetQuote,
-		makeStaticSpreadLevelProvider(config.Levels, config.AmountOfABase, offset, pf, orderConstraints),
+		makeStaticSpreadLevelProvider(
+			config.Levels,
+			config.AmountOfABase,
+			offset,
+			pf,
+			orderConstraints,
+			tradesDB,
+			string(pair.Base),
+			string(pair.Quote),
+			maxDailySell,
+		),
 		config.PriceTolerance,
 		config.AmountTolerance,
 		false,

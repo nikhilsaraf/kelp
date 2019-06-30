@@ -12,7 +12,7 @@ import (
 	"github.com/stellar/kelp/support/utils"
 )
 
-const dateFormatString = "2006/01/02"
+const dbDateFormatString = "2006/01/02"
 const sqlDbCreate = "CREATE TABLE IF NOT EXISTS trades (txid TEXT PRIMARY KEY, date_utc VARCHAR(10), timestamp_millis INTEGER, base TEXT, quote TEXT, action TEXT, type TEXT, counter_price REAL, base_volume REAL, counter_cost REAL, fee REAL)"
 const sqlInsert = "INSERT INTO trades (txid, date_utc, timestamp_millis, base, quote, action, type, counter_price, base_volume, counter_cost, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
@@ -70,7 +70,7 @@ func (f *FillDBWriter) HandleFill(trade model.Trade) error {
 	txid := utils.CheckedString(trade.TransactionID)
 	timeSeconds := trade.Timestamp.AsInt64() / 1000
 	date := time.Unix(timeSeconds, 0).UTC()
-	dateString := date.Format(dateFormatString)
+	dateString := date.Format(dbDateFormatString)
 
 	_, e = statement.Exec(
 		txid,

@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 
@@ -21,6 +22,7 @@ type strategyFactoryData struct {
 	assetQuote      *horizon.Asset
 	stratConfigPath string
 	simMode         bool
+	tradesDb        *sql.DB
 }
 
 // StrategyContainer contains the strategy factory method along with some metadata
@@ -44,7 +46,7 @@ var strategies = map[string]StrategyContainer{
 			err := config.Read(strategyFactoryData.stratConfigPath, &cfg)
 			utils.CheckConfigError(cfg, err, strategyFactoryData.stratConfigPath)
 			utils.LogConfig(cfg)
-			s, e := makeBuySellStrategy(strategyFactoryData.sdex, strategyFactoryData.tradingPair, strategyFactoryData.ieif, strategyFactoryData.assetBase, strategyFactoryData.assetQuote, &cfg)
+			s, e := makeBuySellStrategy(strategyFactoryData.sdex, strategyFactoryData.tradingPair, strategyFactoryData.ieif, strategyFactoryData.assetBase, strategyFactoryData.assetQuote, &cfg, strategyFactoryData.tradesDb)
 			if e != nil {
 				return nil, fmt.Errorf("makeFn failed: %s", e)
 			}
@@ -78,7 +80,14 @@ var strategies = map[string]StrategyContainer{
 			err := config.Read(strategyFactoryData.stratConfigPath, &cfg)
 			utils.CheckConfigError(cfg, err, strategyFactoryData.stratConfigPath)
 			utils.LogConfig(cfg)
-			s, e := makeSellStrategy(strategyFactoryData.sdex, strategyFactoryData.tradingPair, strategyFactoryData.ieif, strategyFactoryData.assetBase, strategyFactoryData.assetQuote, &cfg)
+			s, e := makeSellStrategy(
+				strategyFactoryData.sdex,
+				strategyFactoryData.tradingPair,
+				strategyFactoryData.ieif,
+				strategyFactoryData.assetBase,
+				strategyFactoryData.assetQuote,
+				&cfg,
+				strategyFactoryData.tradesDb)
 			if e != nil {
 				return nil, fmt.Errorf("makeFn failed: %s", e)
 			}
@@ -119,6 +128,7 @@ func MakeStrategy(
 	strategy string,
 	stratConfigPath string,
 	simMode bool,
+	tradesDb *sql.DB,
 ) (api.Strategy, error) {
 	log.Printf("Making strategy: %s\n", strategy)
 	if s, ok := strategies[strategy]; ok {
@@ -134,6 +144,7 @@ func MakeStrategy(
 			assetQuote:      assetQuote,
 			stratConfigPath: stratConfigPath,
 			simMode:         simMode,
+			tradesDb:        tradesDb,
 		})
 		if e != nil {
 			return nil, fmt.Errorf("cannot make '%s' strategy: %s", strategy, e)

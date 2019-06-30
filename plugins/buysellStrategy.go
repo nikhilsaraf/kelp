@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/stellar/go/clients/horizon"
@@ -11,16 +12,20 @@ import (
 
 // buySellConfig contains the configuration params for this strategy
 type buySellConfig struct {
-	PriceTolerance         float64       `valid:"-" toml:"PRICE_TOLERANCE"`
-	AmountTolerance        float64       `valid:"-" toml:"AMOUNT_TOLERANCE"`
-	RateOffsetPercent      float64       `valid:"-" toml:"RATE_OFFSET_PERCENT"`
-	RateOffset             float64       `valid:"-" toml:"RATE_OFFSET"`
-	RateOffsetPercentFirst bool          `valid:"-" toml:"RATE_OFFSET_PERCENT_FIRST"`
-	AmountOfABase          float64       `valid:"-" toml:"AMOUNT_OF_A_BASE"` // the size of order to keep on either side
 	DataTypeA              string        `valid:"-" toml:"DATA_TYPE_A"`
 	DataFeedAURL           string        `valid:"-" toml:"DATA_FEED_A_URL"`
 	DataTypeB              string        `valid:"-" toml:"DATA_TYPE_B"`
 	DataFeedBURL           string        `valid:"-" toml:"DATA_FEED_B_URL"`
+	PriceTolerance         float64       `valid:"-" toml:"PRICE_TOLERANCE"`
+	AmountTolerance        float64       `valid:"-" toml:"AMOUNT_TOLERANCE"`
+	AmountOfABase          float64       `valid:"-" toml:"AMOUNT_OF_A_BASE"` // the size of order to keep on either side
+	RateOffsetPercent      float64       `valid:"-" toml:"RATE_OFFSET_PERCENT"`
+	RateOffset             float64       `valid:"-" toml:"RATE_OFFSET"`
+	RateOffsetPercentFirst bool          `valid:"-" toml:"RATE_OFFSET_PERCENT_FIRST"`
+	MaxDailySell           float64       `valid:"-" toml:"MAX_DAILY_SELL"`
+	MaxDailySellAssetType  string        `valid:"-" toml:"MAX_DAILY_SELL_ASSET_TYPE"`
+	MaxDailyBuy            float64       `valid:"-" toml:"MAX_DAILY_BUY"`
+	MaxDailyBuyAssetType   string        `valid:"-" toml:"MAX_DAILY_BUY_ASSET_TYPE"`
 	Levels                 []staticLevel `valid:"-" toml:"LEVELS"`
 }
 
@@ -37,6 +42,7 @@ func makeBuySellStrategy(
 	assetBase *horizon.Asset,
 	assetQuote *horizon.Asset,
 	config *buySellConfig,
+	tradesDB *sql.DB,
 ) (api.Strategy, error) {
 	offsetSell := rateOffset{
 		percent:      config.RateOffsetPercent,
@@ -53,6 +59,10 @@ func makeBuySellStrategy(
 		return nil, fmt.Errorf("cannot make the buysell strategy because we could not make the sell side feed pair: %s", e)
 	}
 	orderConstraints := sdex.GetOrderConstraints(pair)
+	maxDailySell := &MaxDailySell{
+		assetType: config.MaxDailySellAssetType,
+		amount:    config.MaxDailySell,
+	}
 	sellSideStrategy := makeSellSideStrategy(
 		sdex,
 		orderConstraints,
@@ -65,6 +75,10 @@ func makeBuySellStrategy(
 			offsetSell,
 			sellSideFeedPair,
 			orderConstraints,
+			tradesDB,
+			string(pair.Base),
+			string(pair.Quote),
+			maxDailySell,
 		),
 		config.PriceTolerance,
 		config.AmountTolerance,
@@ -86,6 +100,10 @@ func makeBuySellStrategy(
 	if e != nil {
 		return nil, fmt.Errorf("cannot make the buysell strategy because we could not make the buy side feed pair: %s", e)
 	}
+	maxDailyBuy := &MaxDailySell{
+		assetType: config.MaxDailyBuyAssetType,
+		amount:    config.MaxDailyBuy,
+	}
 	// switch sides of base/quote here for buy side
 	buySideStrategy := makeSellSideStrategy(
 		sdex,
@@ -99,6 +117,10 @@ func makeBuySellStrategy(
 			offsetBuy,
 			buySideFeedPair,
 			orderConstraints,
+			tradesDB,
+			string(pair.Quote),
+			string(pair.Base),
+			maxDailyBuy,
 		),
 		config.PriceTolerance,
 		config.AmountTolerance,
