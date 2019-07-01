@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -86,6 +87,12 @@ func (f *FillDBWriter) HandleFill(trade model.Trade) error {
 		f.checkedFloat(trade.Fee),
 	)
 	if e != nil {
+		if strings.Contains(e.Error(), "UNIQUE constraint failed: trades.txid") {
+			log.Printf("UNIQUE constraint violated when writing trade (txid=%s) to db, ignore and continue\n", txid)
+			// return nil to continue
+			return nil
+		}
+		// return an error on any other errors
 		return fmt.Errorf("could not execute sql insert values statement: %s", e)
 	}
 	log.Printf("wrote trade (txid=%s) to db\n", txid)
