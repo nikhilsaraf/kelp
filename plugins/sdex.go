@@ -576,15 +576,19 @@ func (sdex *SDEX) getOrderAction(baseAsset horizon.Asset, quoteAsset horizon.Ass
 	actionSell := model.OrderActionSell
 	actionBuy := model.OrderActionBuy
 	if sdexBaseAsset == tradeBaseAsset && sdexQuoteAsset == tradeQuoteAsset {
-		if trade.BaseIsSeller {
-			return &actionSell
-		}
-		return &actionBuy
-	} else if sdexBaseAsset == tradeQuoteAsset && sdexQuoteAsset == tradeBaseAsset {
+		// this seems counter-intuitive; when assets line up and baseIsSeller then the bot has purchased the base asset
 		if trade.BaseIsSeller {
 			return &actionBuy
 		}
+		// this seems counter-intuitive; when assets line up and !baseIsSeller then the bot has sold the base asset
 		return &actionSell
+	} else if sdexBaseAsset == tradeQuoteAsset && sdexQuoteAsset == tradeBaseAsset {
+		// conversely, this seems counter-intuitive; when assets do not line up and baseIsSeller then the bot has sold the base asset
+		if trade.BaseIsSeller {
+			return &actionSell
+		}
+		// and when assets do not line up and !baseIsSeller then the bot has purchased the base asset
+		return &actionBuy
 	} else {
 		return nil
 	}
