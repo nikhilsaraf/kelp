@@ -24,6 +24,7 @@ type sellConfig struct {
 	RateOffsetPercentFirst bool          `valid:"-" toml:"RATE_OFFSET_PERCENT_FIRST"`
 	MaxDailySell           float64       `valid:"-" toml:"MAX_DAILY_SELL"`
 	MaxDailySellAssetType  string        `valid:"-" toml:"MAX_DAILY_SELL_ASSET_TYPE"`
+	MinSellPrice           float64       `valid:"-" toml:"MIN_SELL_PRICE"`
 	Levels                 []staticLevel `valid:"-" toml:"LEVELS"`
 }
 
@@ -78,6 +79,7 @@ func makeSellStrategy(
 			string(pair.Base),
 			string(pair.Quote),
 			maxDailySell,
+			config.MinSellPrice,
 		),
 		config.PriceTolerance,
 		config.AmountTolerance,

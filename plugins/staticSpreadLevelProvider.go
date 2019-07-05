@@ -56,6 +56,7 @@ type staticSpreadLevelProvider struct {
 	baseAsset        string
 	quoteAsset       string
 	maxDailySell     *MaxDailySell
+	minSellPrice     float64
 }
 
 // ensure it implements the LevelProvider interface
@@ -72,6 +73,7 @@ func makeStaticSpreadLevelProvider(
 	baseAsset string,
 	quoteAsset string,
 	maxDailySell *MaxDailySell,
+	minSellPrice float64,
 ) api.LevelProvider {
 	return &staticSpreadLevelProvider{
 		staticLevels:     staticLevels,
@@ -83,6 +85,7 @@ func makeStaticSpreadLevelProvider(
 		baseAsset:        baseAsset,
 		quoteAsset:       quoteAsset,
 		maxDailySell:     maxDailySell,
+		minSellPrice:     minSellPrice,
 	}
 }
 
@@ -182,6 +185,11 @@ func (p *staticSpreadLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuot
 	for _, sl := range p.staticLevels {
 		absoluteSpread := centerPrice * sl.SPREAD
 		price := model.NumberFromFloat(centerPrice+absoluteSpread, p.orderConstraints.PricePrecision)
+		if p.minSellPrice > 0.0 && price.AsFloat() < p.minSellPrice {
+			log.Printf("skipping level at price = %f because it was less than minSellPrice (%f)\n", price.AsFloat(), p.minSellPrice)
+			continue
+		}
+
 		amount := model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, p.orderConstraints.VolumePrecision)
 		amountCapped := capAmountFn(maxAssetBase, baseAmountSoFar, amount.AsFloat(), price.AsFloat())
 		if amountCapped <= 0 {
