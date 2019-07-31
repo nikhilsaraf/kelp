@@ -286,7 +286,7 @@ class Form extends Component {
               </SectionTitle>
             </FormSection>
             
-            <FormSection>
+            <FormSection tip="These settings control the non-strategy config parameters of the bot">
               <SectionDescription>
                 These settings refer to the operations of the bot, trading platform, and runtime parameters, but not the chosen trading strategy.
                 <br/>
@@ -308,7 +308,7 @@ class Form extends Component {
               </FieldItem>
             </FormSection> */}
               
-            <FormSection>
+            <FormSection tip="Which network are we operating on, Test or Public">
               <FieldItem>
                 <Label padding>Network</Label>
                 <Label padding>TestNet</Label>
@@ -330,15 +330,14 @@ class Form extends Component {
               </FieldItem>
             </FormSection>
             
-            <FormSection>
+            <FormSection tip="The secret key to use with this bot. The associated account will hold the assets we want to trade">
               <FieldItem>
                 <Label>Trader account secret key</Label>
                 {traderSecretKey}
               </FieldItem>
             </FormSection>
 
-            {/* <FormSection tip="Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Etiam purus nunc, rhoncus ac lorem eget, eleifend congue nisl."> */}
-            <FormSection>
+            <FormSection tip="The assets we want to trade. Typically quoted as 'base/quote' with the resulting value being read in units of the quote currency. Example: USD/EUR = 0.83 which implies that if I sell 100 USD I will receive 83 EUR">
               <div className={grid.row}>
                 <div className={grid.col4}>
                   <FieldItem>
@@ -617,58 +616,62 @@ class Form extends Component {
             </SectionDescription>
             
 
-            <FieldGroup groupTitle="Price Feed">
-              <FieldItem>
-                <PriceFeedAsset
-                  baseUrl={this.props.baseUrl}
-                  onChange={(newValues) => this.priceFeedAssetChangeHandler("a", newValues)}
-                  title="Current numerator price"
-                  optionsMetadata={this.props.optionsMetadata}
-                  type={this.props.configData.strategy_config.data_type_a}
-                  feed_url={this.props.configData.strategy_config.data_feed_a_url}
-                  onLoadingPrice={() => this.setLoadingFormula()}
-                  onNewPrice={(newPrice) => this.updateFormulaPrice("numerator", newPrice)}
-                  />
-              </FieldItem>
-              <FieldItem>
-                <PriceFeedAsset
-                  baseUrl={this.props.baseUrl}
-                  onChange={(newValues) => this.priceFeedAssetChangeHandler("b", newValues)}
-                  title="Current denominator price"
-                  optionsMetadata={this.props.optionsMetadata}
-                  type={this.props.configData.strategy_config.data_type_b}
-                  feed_url={this.props.configData.strategy_config.data_feed_b_url}
-                  onLoadingPrice={() => this.setLoadingFormula()}
-                  onNewPrice={(newPrice) => this.updateFormulaPrice("denominator", newPrice)}
-                  />
-              </FieldItem>
-              <PriceFeedFormula
-                isLoading={this.state.isLoadingFormula || this.props.optionsMetadata == null}
-                numerator={this.state.numerator}
-                denominator={this.state.denominator}
-                />
-            </FieldGroup>
-            
-            <div className={grid.row}>
-              <div className={grid.col8}>
-                <FieldGroup groupTitle="Levels">
-                  <Levels
-                    levels={this.props.configData.strategy_config.levels}
-                    updateLevel={(levelIdx, fieldAmtSpread, value) => { this.updateLevel(levelIdx, fieldAmtSpread, value) }}
-                    newLevel={this.newLevel}
-                    hasNewLevel={this.hasNewLevel}
-                    onRemove={(levelIdx) => { this.removeLevel(levelIdx) }}
-                    error={this.getError("strategy_config.levels")}
+            <FormSection tip="This contains all the controls needed to price the asset. Once you set a way of how to set the price the bot will automatically keep the price within bounds">
+              <FieldGroup groupTitle="Price Feed">
+                <FieldItem>
+                  <PriceFeedAsset
+                    baseUrl={this.props.baseUrl}
+                    onChange={(newValues) => this.priceFeedAssetChangeHandler("a", newValues)}
+                    title="Current numerator price"
+                    optionsMetadata={this.props.optionsMetadata}
+                    type={this.props.configData.strategy_config.data_type_a}
+                    feed_url={this.props.configData.strategy_config.data_feed_a_url}
+                    onLoadingPrice={() => this.setLoadingFormula()}
+                    onNewPrice={(newPrice) => this.updateFormulaPrice("numerator", newPrice)}
                     />
-                </FieldGroup>
+                </FieldItem>
+                <FieldItem>
+                  <PriceFeedAsset
+                    baseUrl={this.props.baseUrl}
+                    onChange={(newValues) => this.priceFeedAssetChangeHandler("b", newValues)}
+                    title="Current denominator price"
+                    optionsMetadata={this.props.optionsMetadata}
+                    type={this.props.configData.strategy_config.data_type_b}
+                    feed_url={this.props.configData.strategy_config.data_feed_b_url}
+                    onLoadingPrice={() => this.setLoadingFormula()}
+                    onNewPrice={(newPrice) => this.updateFormulaPrice("denominator", newPrice)}
+                    />
+                </FieldItem>
+                <PriceFeedFormula
+                  isLoading={this.state.isLoadingFormula || this.props.optionsMetadata == null}
+                  numerator={this.state.numerator}
+                  denominator={this.state.denominator}
+                  />
+              </FieldGroup>
+            </FormSection>
+            
+            <FormSection tip="Set multiple 'levels' for the market at differing spread values">
+              <div className={grid.row}>
+                <div className={grid.col8}>
+                  <FieldGroup groupTitle="Levels">
+                    <Levels
+                      levels={this.props.configData.strategy_config.levels}
+                      updateLevel={(levelIdx, fieldAmtSpread, value) => { this.updateLevel(levelIdx, fieldAmtSpread, value) }}
+                      newLevel={this.newLevel}
+                      hasNewLevel={this.hasNewLevel}
+                      onRemove={(levelIdx) => { this.removeLevel(levelIdx) }}
+                      error={this.getError("strategy_config.levels")}
+                      />
+                  </FieldGroup>
+                </div>
               </div>
-            </div>
+            </FormSection>
           </FormSection>
         </div>
 
         <AdvancedWrapper headerClass={grid.container}>
           <div className={grid.container}>
-            <FormSection>
+            <FormSection tip="Describes various tolerances that define how sensitive the bot is when placing offers">
               <div className={grid.row}>
                 <div className={grid.col5}>
                   <FieldItem>
