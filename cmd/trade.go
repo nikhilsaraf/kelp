@@ -331,7 +331,7 @@ func makeExchangeShimSdex(
 	}
 
 	if *options.backtestMode {
-		pf, e := plugins.MakeBacktestPriceFeed(tradingPair, exchangeShim)
+		pf, e := plugins.MakeBacktestPriceFeed(tradingPair, exchangeShim, options.parsedStartTime, options.parsedEndTime)
 		if e != nil {
 			logger.Fatal(l, fmt.Errorf("unable to make backtest price feed: %s", e))
 		}
@@ -339,8 +339,6 @@ func makeExchangeShimSdex(
 			tradingPair,
 			model.NumberFromFloat(*options.startBaseBalance, plugins.BacktestPrecision),
 			model.NumberFromFloat(*options.startQuoteBalance, plugins.BacktestPrecision),
-			options.parsedStartTime,
-			options.parsedEndTime,
 			pf,
 			*options.slippagePct,
 		)

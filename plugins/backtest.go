@@ -20,8 +20,6 @@ type backtest struct {
 	pair              *model.TradingPair
 	balances          *balanceStruct
 	obFn              orderbookFn
-	startTime         *time.Time
-	endTime           *time.Time
 	nextTransactionID uint64
 }
 
@@ -73,8 +71,6 @@ func MakeBacktestSimple(
 	pair *model.TradingPair,
 	baseBalance *model.Number,
 	quoteBalance *model.Number,
-	startTime *time.Time,
-	endTime *time.Time,
 	pf api.CachedPriceFeed,
 	slippagePct float64,
 ) (*backtest, error) {
@@ -89,8 +85,6 @@ func MakeBacktestSimple(
 			pf:          pf,
 			slippagePct: slippagePct,
 		},
-		startTime:         startTime,
-		endTime:           endTime,
 		nextTransactionID: 0,
 	}, nil
 }
@@ -99,6 +93,8 @@ func MakeBacktestSimple(
 type BacktestPriceFeed struct {
 	pair      *model.TradingPair
 	obFetcher api.OrderbookFetcher
+	startTime *time.Time
+	endTime   *time.Time
 
 	// uninitialized
 	cachedValue *float64
@@ -108,10 +104,17 @@ type BacktestPriceFeed struct {
 var _ api.CachedPriceFeed = &BacktestPriceFeed{}
 
 // MakeBacktestPriceFeed makes a price feed that wraps an orderbookFetcher for backtesting
-func MakeBacktestPriceFeed(pair *model.TradingPair, obFetcher api.OrderbookFetcher) (api.CachedPriceFeed, error) {
+func MakeBacktestPriceFeed(
+	pair *model.TradingPair,
+	obFetcher api.OrderbookFetcher,
+	startTime *time.Time,
+	endTime *time.Time,
+) (api.CachedPriceFeed, error) {
 	return &BacktestPriceFeed{
 		pair:      pair,
 		obFetcher: obFetcher,
+		startTime: startTime,
+		endTime:   endTime,
 	}, nil
 }
 
