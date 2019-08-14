@@ -30,7 +30,8 @@ import (
 )
 
 const tradeExamples = `  kelp trade --botConf ./path/trader.cfg --strategy buysell --stratConf ./path/buysell.cfg
-  kelp trade --botConf ./path/trader.cfg --strategy buysell --stratConf ./path/buysell.cfg --sim`
+  kelp trade --botConf ./path/trader.cfg --strategy buysell --stratConf ./path/buysell.cfg --sim
+  kelp trade --botConf ./path/trader.cfg --strategy buysell --stratConf ./path/buysell.cfg --backtest --start-time 01/01/2017 --end-time 12/31/2018 --start-base-balance 5000.0 --start-quote-balance 500.0 --slippage-pct 0.0125`
 
 const prefsFilename = "kelp.prefs"
 
@@ -75,6 +76,16 @@ type inputs struct {
 	logPrefix                     *string
 	fixedIterations               *uint64
 	noHeaders                     *bool
+	backtestMode                  *bool
+	startTime                     *string
+	endTime                       *string
+	startBaseBalance              *float64
+	startQuoteBalance             *float64
+	slippagePct                   *float64
+
+	// loaded at runtime
+	parsedStartTime *time.Time
+	parsedEndTime   *time.Time
 }
 
 func validateCliParams(l logger.Logger, options inputs) {
@@ -93,6 +104,33 @@ func validateCliParams(l logger.Logger, options inputs) {
 		l.Info("will run unbounded iterations")
 	} else {
 		l.Infof("will run only %d update iterations\n", *options.fixedIterations)
+	}
+
+	if *options.backtestMode {
+		startTime, e := time.Parse("01/02/2006", *options.startTime)
+		if e != nil {
+			panic(fmt.Sprintf("start-time needs to be specified in the format of mm/dd/yyyy (UTC): %s", e))
+		}
+		endTime, e := time.Parse("01/02/2006", *options.endTime)
+		if e != nil {
+			panic(fmt.Sprintf("end-time needs to be specified in the format of mm/dd/yyyy (UTC): %s", e))
+		}
+		if !endTime.After(startTime) {
+			panic("end-time needs to be after start-time")
+		}
+
+		if *options.startBaseBalance < 0.0 {
+			panic(fmt.Sprintf("start-base-balance needs to be greater than or equal to 0: %f", *options.startBaseBalance))
+		}
+		if *options.startQuoteBalance < 0.0 {
+			panic(fmt.Sprintf("start-quote-balance needs to be greater than or equal to 0: %f", *options.startQuoteBalance))
+		}
+		if *options.startBaseBalance == 0.0 && *options.startQuoteBalance == 0.0 {
+			panic("both start-base-balance and start-quote-balance cannot be 0")
+		}
+
+		options.parsedStartTime = &startTime
+		options.parsedEndTime = &endTime
 	}
 }
 
@@ -131,6 +169,12 @@ func init() {
 	options.logPrefix = tradeCmd.Flags().StringP("log", "l", "", "log to a file (and stdout) with this prefix for the filename")
 	options.fixedIterations = tradeCmd.Flags().Uint64("iter", 0, "only run the bot for the first N iterations (defaults value 0 runs unboundedly)")
 	options.noHeaders = tradeCmd.Flags().Bool("no-headers", false, "do not set X-App-Name and X-App-Version headers on requests to horizon")
+	options.backtestMode = tradeCmd.Flags().Bool("backtest", false, "backtest your strategy against a specified time period (requires --start-time and --end-time arguments")
+	options.startTime = tradeCmd.Flags().String("start-time", "", "time from when to begin the backtest period specified as mm/dd/yyyy (UTC)")
+	options.endTime = tradeCmd.Flags().String("end-time", "", "time from when to end the backtest period specified as mm/dd/yyyy (UTC)")
+	options.startBaseBalance = tradeCmd.Flags().Float64("start-base-balance", -1.0, "balance of the base asset to start off with")
+	options.startQuoteBalance = tradeCmd.Flags().Float64("start-quote-balance", -1.0, "balance of the quote asset to start off with")
+	options.slippagePct = tradeCmd.Flags().Float64("slippage-pct", 0.0, "specify a slippage percent value in decimal form, example: 0.0125 = 1.25% (default = 0.0)")
 
 	requiredFlag("botConf")
 	requiredFlag("strategy")
@@ -285,6 +329,27 @@ func makeExchangeShimSdex(
 	if botConfig.IsTradingSdex() {
 		exchangeShim = sdex
 	}
+
+	if *options.backtestMode {
+		pf, e := plugins.MakeBacktestPriceFeed(tradingPair, exchangeShim)
+		if e != nil {
+			logger.Fatal(l, fmt.Errorf("unable to make backtest price feed: %s", e))
+		}
+		backtestExchange, e := plugins.MakeBacktestSimple(
+			tradingPair,
+			model.NumberFromFloat(*options.startBaseBalance, plugins.BacktestPrecision),
+			model.NumberFromFloat(*options.startQuoteBalance, plugins.BacktestPrecision),
+			options.parsedStartTime,
+			options.parsedEndTime,
+			pf,
+			*options.slippagePct,
+		)
+		if e != nil {
+			logger.Fatal(l, fmt.Errorf("unable to make backtest: %s", e))
+		}
+		exchangeShim = plugins.MakeBatchedExchange(backtestExchange, false, botConfig.AssetBase(), botConfig.AssetQuote(), botConfig.TradingAccount())
+	}
+
 	return exchangeShim, sdex
 }
 

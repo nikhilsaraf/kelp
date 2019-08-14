@@ -30,3 +30,9 @@ func (p *FeedPair) GetCenterPrice() (float64, error) {
 	log.Printf("feedPair prices: feedA=%.7f, feedB=%.7f; centerPrice=%.7f\n", pA, pB, centerPrice)
 	return centerPrice, nil
 }
+
+// CachedPriceFeed returns the same value until the Tick() method is invoked
+type CachedPriceFeed interface {
+	PriceFeed
+	Tick() error
+}

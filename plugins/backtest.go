@@ -10,6 +10,8 @@ import (
 	"github.com/stellar/kelp/model"
 )
 
+const BacktestPrecision int8 = 10
+
 // ensure that backtest conforms to the Exchange interface
 var _ api.Exchange = &backtest{}
 
@@ -18,6 +20,8 @@ type backtest struct {
 	pair              *model.TradingPair
 	balances          *balanceStruct
 	obFn              orderbookFn
+	startTime         *time.Time
+	endTime           *time.Time
 	nextTransactionID uint64
 }
 
@@ -32,7 +36,7 @@ type balanceStruct struct {
 
 type slippageBasedOrderBook struct {
 	pair        *model.TradingPair
-	pf          api.PriceFeed
+	pf          api.CachedPriceFeed
 	slippagePct float64
 }
 
@@ -49,27 +53,29 @@ func (ob *slippageBasedOrderBook) getOrderBook() (*model.OrderBook, error) {
 		Pair:        ob.pair,
 		OrderAction: model.OrderActionSell,
 		OrderType:   model.OrderTypeLimit,
-		Price:       model.NumberFromFloat(price*(1+ob.slippagePct), largePrecision),
-		Volume:      model.NumberFromFloat(1000000000000.0, largePrecision), // 1 trillion should be large enough
+		Price:       model.NumberFromFloat(price*(1+ob.slippagePct), BacktestPrecision),
+		Volume:      model.NumberFromFloat(1000000000000.0, BacktestPrecision), // 1 trillion should be large enough
 		Timestamp:   ts,
 	}
 	bid := model.Order{
 		Pair:        ob.pair,
 		OrderAction: model.OrderActionBuy,
 		OrderType:   model.OrderTypeLimit,
-		Price:       model.NumberFromFloat(price*(1-ob.slippagePct), largePrecision),
-		Volume:      model.NumberFromFloat(1000000000000.0, largePrecision), // 1 trillion should be large enough
+		Price:       model.NumberFromFloat(price*(1-ob.slippagePct), BacktestPrecision),
+		Volume:      model.NumberFromFloat(1000000000000.0, BacktestPrecision), // 1 trillion should be large enough
 		Timestamp:   ts,
 	}
 	return model.MakeOrderBook(ob.pair, []model.Order{ask}, []model.Order{bid}), nil
 }
 
-// makeBacktest is a factory method to make the backtesting framework
-func makeBacktestSimple(
+// MakeBacktestSimple is a factory method to make the backtesting framework
+func MakeBacktestSimple(
 	pair *model.TradingPair,
 	baseBalance *model.Number,
 	quoteBalance *model.Number,
-	pf api.PriceFeed,
+	startTime *time.Time,
+	endTime *time.Time,
+	pf api.CachedPriceFeed,
 	slippagePct float64,
 ) (*backtest, error) {
 	return &backtest{
@@ -83,8 +89,57 @@ func makeBacktestSimple(
 			pf:          pf,
 			slippagePct: slippagePct,
 		},
+		startTime:         startTime,
+		endTime:           endTime,
 		nextTransactionID: 0,
 	}, nil
+}
+
+// BacktestPriceFeed has some additional functions
+type BacktestPriceFeed struct {
+	pair      *model.TradingPair
+	obFetcher api.OrderbookFetcher
+
+	// uninitialized
+	cachedValue *float64
+}
+
+// ensure that BacktestPriceFeed implements api.CachedPriceFeed
+var _ api.CachedPriceFeed = &BacktestPriceFeed{}
+
+// MakeBacktestPriceFeed makes a price feed that wraps an orderbookFetcher for backtesting
+func MakeBacktestPriceFeed(pair *model.TradingPair, obFetcher api.OrderbookFetcher) (api.CachedPriceFeed, error) {
+	return &BacktestPriceFeed{
+		pair:      pair,
+		obFetcher: obFetcher,
+	}, nil
+}
+
+// GetPrice impl
+func (pf *BacktestPriceFeed) GetPrice() (float64, error) {
+	if pf.cachedValue != nil {
+		return *pf.cachedValue, nil
+	}
+
+	ob, e := pf.obFetcher.GetOrderBook(pf.pair, 1)
+	if e != nil {
+		return 0.0, fmt.Errorf("unable to get orderbook: %s", e)
+	}
+	if ob.TopAsk() == nil {
+		return 0.0, fmt.Errorf("insufficient ask orders in backing orderbookFetcher")
+	}
+	if ob.TopBid() == nil {
+		return 0.0, fmt.Errorf("insufficient ask orders in backing orderbookFetcher")
+	}
+	price := (ob.TopAsk().Price.AsFloat() + ob.TopBid().Price.AsFloat()) / 2
+	pf.cachedValue = &price
+
+	return price, nil
+}
+
+func (pf *BacktestPriceFeed) Tick() error {
+	pf.cachedValue = nil
+	return nil
 }
 
 // AddOrder impl.
@@ -99,8 +154,8 @@ func (b *backtest) AddOrder(order *model.Order) (*model.TransactionID, error) {
 	}
 
 	if order.OrderAction.IsBuy() {
-		unitsBought := model.NumberFromFloat(0.0, largePrecision)
-		unitsSold := model.NumberFromFloat(0.0, largePrecision)
+		unitsBought := model.NumberFromFloat(0.0, BacktestPrecision)
+		unitsSold := model.NumberFromFloat(0.0, BacktestPrecision)
 		for i, ask := range ob.Asks() {
 			if order.Price.AsFloat() < ask.Price.AsFloat() {
 				return nil, fmt.Errorf("kelp does not currently support the case where you place maker offers in backtesting mode, order price = %s, orderbook ask price = %s, index of ask = ", order.Price.AsString(), ask.Price.AsString(), i)
@@ -132,8 +187,8 @@ func (b *backtest) AddOrder(order *model.Order) (*model.TransactionID, error) {
 		b.balances.base = b.balances.base.Add(*unitsBought)
 		b.balances.quote = b.balances.quote.Subtract(*unitsSold)
 	} else {
-		unitsBought := model.NumberFromFloat(0.0, largePrecision)
-		unitsSold := model.NumberFromFloat(0.0, largePrecision)
+		unitsBought := model.NumberFromFloat(0.0, BacktestPrecision)
+		unitsSold := model.NumberFromFloat(0.0, BacktestPrecision)
 		for i, bid := range ob.Bids() {
 			if order.Price.AsFloat() > bid.Price.AsFloat() {
 				return nil, fmt.Errorf("kelp does not currently support the case where you place maker offers in backtesting mode, order price = %s, orderbook bid price = %s, index of bid = ", order.Price.AsString(), bid.Price.AsString(), i)
@@ -189,7 +244,7 @@ func (b *backtest) GetAccountBalances(assetList []interface{}) (map[interface{}]
 
 // GetOrderConstraints impl
 func (b *backtest) GetOrderConstraints(pair *model.TradingPair) *model.OrderConstraints {
-	return model.MakeOrderConstraints(largePrecision, largePrecision, 1.0)
+	return model.MakeOrderConstraints(BacktestPrecision, BacktestPrecision, 1.0)
 }
 
 // OverrideOrderConstraints impl, can partially override values for specific pairs
