@@ -384,6 +384,7 @@ func (sdex *SDEX) submitOps(opsOld []build.TransactionMutator, asyncCallback fun
 		Network:    sdex.Network,
 	}
 
+	// SubmitOps error: : failed to build operation *txnbuild.ManageSellOffer: failed to parse 'Amount': amount outside bounds of int64: 150000000000000000: strconv.ParseInt: parsing "1500000000000000000000000": value out of range
 	// compute fee per operation
 	opFee, e := sdex.opFeeStroopsFn()
 	if e != nil {
