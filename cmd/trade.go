@@ -495,11 +495,11 @@ func startFillTracking(
 	}
 
 	if botConfig.FillTrackerSleepMillis != 0 {
-		var lastTradeCursorOverride *string
+		var lastTradeCursorOverride interface{}
 		if botConfig.FillTrackerLastTradeCursorOverride == "" {
 			lastTradeCursorOverride = nil
 		} else {
-			lastTradeCursorOverride = &botConfig.FillTrackerLastTradeCursorOverride
+			lastTradeCursorOverride = botConfig.FillTrackerLastTradeCursorOverride
 		}
 
 		fillTracker := plugins.MakeFillTracker(tradingPair, threadTracker, exchangeShim, botConfig.FillTrackerSleepMillis, botConfig.FillTrackerDeleteCyclesThreshold, lastTradeCursorOverride)
