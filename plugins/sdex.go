@@ -200,15 +200,38 @@ func (sdex *SDEX) DeleteOffer(offer hProtocol.Offer) txnbuild.ManageSellOffer {
 	var result txnbuild.ManageSellOffer
 	var e error
 	if sdex.SourceAccount == sdex.TradingAccount {
-		result, e = txnbuild.DeleteOfferOp(offer.ID)
+		result, e = DeleteOfferOp(offer)
 	} else {
-		result, e = txnbuild.DeleteOfferOp(offer.ID, &txnbuild.SimpleAccount{AccountID: sdex.TradingAccount})
+		result, e = DeleteOfferOp(offer, &txnbuild.SimpleAccount{AccountID: sdex.TradingAccount})
 	}
 
 	if e != nil {
 		panic(fmt.Sprintf("unexpected error while creating delete offer op: %s", e))
 	}
 	return result
+}
+
+//DeleteOfferOp returns a ManageSellOffer operation to delete an offer, by
+// setting the Amount to "0". The sourceAccount is optional, and if not provided,
+// will be that of the surrounding transaction.
+func DeleteOfferOp(offer hProtocol.Offer, sourceAccount ...txnbuild.Account) (txnbuild.ManageSellOffer, error) {
+	if len(sourceAccount) > 1 {
+		return txnbuild.ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
+	}
+
+	newOffer := txnbuild.ManageSellOffer{
+		Selling: utils.Asset2Asset(offer.Selling),
+		Buying:  utils.Asset2Asset(offer.Buying),
+		Amount:  "0",
+		Price:   offer.Price,
+		OfferID: offer.ID,
+	}
+
+	if len(sourceAccount) == 1 {
+		newOffer.SourceAccount = sourceAccount[0]
+	}
+
+	return newOffer, nil
 }
 
 // ModifyBuyOffer modifies a buy offer
