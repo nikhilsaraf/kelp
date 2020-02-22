@@ -435,6 +435,9 @@ func getBinaryDirectory() (string, error) {
 
 func openBrowser(kos *kelpos.KelpOS, trayIconPath string, url string) {
 	e := bootstrap.Run(bootstrap.Options{
+		Asset:         Asset,
+		AssetDir:      AssetDir,
+		RestoreAssets: RestoreAssets,
 		AstilectronOptions: astilectron.Options{
 			AppName:            "Kelp",
 			AppIconDefaultPath: "resources/kelp-icon@2x.png",
