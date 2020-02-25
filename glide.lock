@@ -1,5 +1,5 @@
-hash: c591adad92b29f8f741d3fe2774f7cc4a9b96eca8f0be1bff204b7401d4d900e
-updated: 2020-02-17T13:58:42.430704-05:00
+hash: f20df179b93d20f6c91d1415e2497c28a1c52a1f82e6bb05aa17edf27572eb00
+updated: 2020-02-24T18:02:48.958419-08:00
 imports:
 - name: cloud.google.com/go
   version: 83a0b8742b4d7302c26d3b71bfdcbd9224f6b951
@@ -15,26 +15,14 @@ imports:
   - rsrc
 - name: github.com/asaskevich/govalidator
   version: f61b66f89f4a311bef65f13e575bcf1a2ffadda6
+- name: github.com/asticode/go-astikit
+  version: 4e88f5c215edd34493093bdb5a2c37e8c16408ee
 - name: github.com/asticode/go-astilectron
-  version: 8e68f812e8a2dd6655af42a8d6bc44856dd172be
+  version: 248bbedddea470f54b02968958c2d10292fadbec
 - name: github.com/asticode/go-astilectron-bootstrap
-  version: 25b8572859996696903f9417598ebc94d5d61035
+  version: 58dd5b61cd57cde9f6f9c301ded5373401b21dfb
 - name: github.com/asticode/go-astilectron-bundler
-  version: 155c2a10bbb1791fbafe89a9b64be05c64f16c81
-- name: github.com/asticode/go-astilog
-  version: 4318d9ca22883d107f0e27db25a91cddbe4a137e
-- name: github.com/asticode/go-astitools
-  version: d157a994ecbd55bca08e5daf4fe89518ddae4c50
-  subpackages:
-  - archive
-  - context
-  - exec
-  - http
-  - io
-  - os
-  - ptr
-  - regexp
-  - url
+  version: cba668903da3fe0ecca788058636612b255887b2
 - name: github.com/asticode/go-bindata
   version: a0ff2567cfb70903282db057e799fd826784d41d
 - name: github.com/Beldur/kraken-go-api-client
@@ -75,8 +63,6 @@ imports:
   - json/token
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
-- name: github.com/julienschmidt/httprouter
-  version: 08a3b3d20bbeeab9ca4889bcdb65fec0423ef882
 - name: github.com/kr/session
   version: 6f756089c21ec9a4ceb14473bf90d5e3a3e9e303
 - name: github.com/lechengfan/googleauth
@@ -90,10 +76,6 @@ imports:
   version: a586bb8b7deaae2a0eb4c6c8b63a539425628137
 - name: github.com/manucorporat/sse
   version: ee05b128a739a0fb76c7ebd3ae4810c1de808d6d
-- name: github.com/mattn/go-colorable
-  version: 98ec13f34aabf44cc914c65a1cfb7b9bc815aef1
-- name: github.com/mattn/go-isatty
-  version: 2a2f0ea997f99becfd8423e4f337d171753fe685
 - name: github.com/mitchellh/mapstructure
   version: 3536a929edddb9a5b34bd6861dc4a9647cb459fe
 - name: github.com/nikhilsaraf/go-tools

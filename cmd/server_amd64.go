@@ -434,6 +434,11 @@ func getBinaryDirectory() (string, error) {
 }
 
 func openBrowser(kos *kelpos.KelpOS, trayIconPath string, url string) {
+	_true := false
+	_false := false
+	width := 1280
+	height := 960
+	quitString := "Quit"
 	e := bootstrap.Run(bootstrap.Options{
 		Asset:         Asset,
 		AssetDir:      AssetDir,
@@ -446,20 +451,20 @@ func openBrowser(kos *kelpos.KelpOS, trayIconPath string, url string) {
 		Windows: []*bootstrap.Window{&bootstrap.Window{
 			Homepage: url,
 			Options: &astilectron.WindowOptions{
-				Center:   astilectron.PtrBool(true),
-				Width:    astilectron.PtrInt(1280),
-				Height:   astilectron.PtrInt(960),
-				Closable: astilectron.PtrBool(false),
+				Center:   &_true,
+				Width:    &width,
+				Height:   &height,
+				Closable: &_false,
 			},
 		}},
 		TrayOptions: &astilectron.TrayOptions{
-			Image: astilectron.PtrStr(trayIconPath),
+			Image: &trayIconPath,
 		},
 		TrayMenuOptions: []*astilectron.MenuItemOptions{
 			&astilectron.MenuItemOptions{
-				Label:   astilectron.PtrStr("Quit"),
-				Visible: astilectron.PtrBool(true),
-				Enabled: astilectron.PtrBool(true),
+				Label:   &quitString,
+				Visible: &_true,
+				Enabled: &_true,
 				OnClick: astilectron.Listener(func(e astilectron.Event) (deleteListener bool) {
 					quit()
 					return false
