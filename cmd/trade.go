@@ -14,6 +14,7 @@ import (
 	"github.com/nikhilsaraf/go-tools/multithreading"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/horizonclient"
+	stellarNetwork "github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/config"
 	"github.com/stellar/kelp/api"
@@ -485,6 +486,9 @@ func runTradeCmd(options inputs) {
 
 	ieif := plugins.MakeIEIF(botConfig.IsTradingSdex())
 	network := utils.ParseNetwork(botConfig.HorizonURL)
+	if *options.ui && network == stellarNetwork.PublicNetworkPassphrase {
+		log.Fatal("trading on the public Stellar network is currently disabled in the Kelp UI")
+	}
 	sdexAssetMap := map[model.Asset]hProtocol.Asset{
 		tradingPair.Base:  botConfig.AssetBase(),
 		tradingPair.Quote: botConfig.AssetQuote(),
