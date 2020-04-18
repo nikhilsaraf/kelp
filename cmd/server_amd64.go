@@ -117,6 +117,10 @@ func init() {
 			}
 		}
 
+		if *options.verbose {
+			networking.EnableVerboseLogging()
+		}
+
 		// create a latch to trigger the browser opening once the backend server is loaded
 		openBrowserWg := &sync.WaitGroup{}
 		openBrowserWg.Add(1)
