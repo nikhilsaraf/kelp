@@ -5,11 +5,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime"
 	"net/http"
 	"os"
 	"strings"
 )
+
+var verboseLogging = false
+
+// EnableVerboseLogging enabled verbose logging globally
+func EnableVerboseLogging() {
+	verboseLogging = true
+}
 
 // JSONRequestDynamicHeaders submits an HTTP web request and parses the response into the responseData object as JSON
 func JSONRequestDynamicHeaders(
@@ -59,6 +67,9 @@ func JSONRequest(
 	}
 
 	// execute request
+	if verboseLogging {
+		log.Printf("executing HTTP request: %s %s %s\n", method, reqURL, data)
+	}
 	resp, e := httpClient.Do(req)
 	if e != nil {
 		return fmt.Errorf("could not execute http request: %s", e)
