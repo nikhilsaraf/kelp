@@ -388,6 +388,8 @@ func (s *sellSideStrategy) createSellLevel(index int, targetPrice model.Number, 
 				priceLogged = 1 / price
 				amountLogged = amount * price
 			}
+			priceLogged = model.NumberFromFloat(priceLogged, s.orderConstraints.PricePrecision).AsFloat()
+			amountLogged = model.NumberFromFloat(amountLogged, s.orderConstraints.VolumePrecision).AsFloat()
 			log.Printf("%s | create | new level=%d | priceQuote=%.8f | amtBase=%.8f\n", s.action, index+1, priceLogged, amountLogged)
 			return s.sdex.CreateSellOffer(*s.assetBase, *s.assetQuote, price, amount, incrementalNativeAmountRaw)
 		},
@@ -444,8 +446,6 @@ func (s *sellSideStrategy) modifySellLevel(offers []hProtocol.Offer, index int, 
 		triggers = append(triggers, "oversell")
 	}
 
-	targetPrice = *model.NumberByCappingPrecision(&targetPrice, s.orderConstraints.PricePrecision)
-	targetAmount = *model.NumberByCappingPrecision(&targetAmount, s.orderConstraints.VolumePrecision)
 	hitCapacityLimit, op, e := s.placeOrderWithRetry(
 		targetPrice.AsFloat(),
 		targetAmount.AsFloat(),
@@ -470,6 +470,15 @@ func (s *sellSideStrategy) modifySellLevel(offers []hProtocol.Offer, index int, 
 				lowestPriceLogged = 1 / highestPrice
 				highestPriceLogged = 1 / lowestPrice
 			}
+
+			priceLogged = model.NumberFromFloat(priceLogged, s.orderConstraints.PricePrecision).AsFloat()
+			curPriceLogged = model.NumberFromFloat(curPriceLogged, s.orderConstraints.PricePrecision).AsFloat()
+			lowestPriceLogged = model.NumberFromFloat(lowestPriceLogged, s.orderConstraints.PricePrecision).AsFloat()
+			highestPriceLogged = model.NumberFromFloat(highestPriceLogged, s.orderConstraints.PricePrecision).AsFloat()
+			amountLogged = model.NumberFromFloat(amountLogged, s.orderConstraints.VolumePrecision).AsFloat()
+			curAmountLogged = model.NumberFromFloat(curAmountLogged, s.orderConstraints.VolumePrecision).AsFloat()
+			minAmountLogged = model.NumberFromFloat(minAmountLogged, s.orderConstraints.VolumePrecision).AsFloat()
+			maxAmountLogged = model.NumberFromFloat(maxAmountLogged, s.orderConstraints.VolumePrecision).AsFloat()
 			log.Printf("%s | modify | old level=%d | new level = %d | triggers=%v | targetPriceQuote=%.8f | targetAmtBase=%.8f | curPriceQuote=%.8f | lowPriceQuote=%.8f | highPriceQuote=%.8f | curAmtBase=%.8f | minAmtBase=%.8f | maxAmtBase=%.8f\n",
 				s.action, index+1, newIndex+1, triggers, priceLogged, amountLogged, curPriceLogged, lowestPriceLogged, highestPriceLogged, curAmountLogged, minAmountLogged, maxAmountLogged)
 			return s.sdex.ModifySellOffer(offers[index], price, amount, incrementalNativeAmountRaw)
