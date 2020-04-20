@@ -35,24 +35,22 @@ type rateOffset struct {
 
 // staticSpreadLevelProvider provides a fixed number of levels using a static percentage spread
 type staticSpreadLevelProvider struct {
-	staticLevels     []StaticLevel
-	amountOfBase     float64
-	offset           rateOffset
-	pf               *api.FeedPair
-	orderConstraints *model.OrderConstraints
+	staticLevels []StaticLevel
+	amountOfBase float64
+	offset       rateOffset
+	pf           *api.FeedPair
 }
 
 // ensure it implements the LevelProvider interface
 var _ api.LevelProvider = &staticSpreadLevelProvider{}
 
 // makeStaticSpreadLevelProvider is a factory method
-func makeStaticSpreadLevelProvider(staticLevels []StaticLevel, amountOfBase float64, offset rateOffset, pf *api.FeedPair, orderConstraints *model.OrderConstraints) api.LevelProvider {
+func makeStaticSpreadLevelProvider(staticLevels []StaticLevel, amountOfBase float64, offset rateOffset, pf *api.FeedPair) api.LevelProvider {
 	return &staticSpreadLevelProvider{
-		staticLevels:     staticLevels,
-		amountOfBase:     amountOfBase,
-		offset:           offset,
-		pf:               pf,
-		orderConstraints: orderConstraints,
+		staticLevels: staticLevels,
+		amountOfBase: amountOfBase,
+		offset:       offset,
+		pf:           pf,
 	}
 }
 
@@ -84,8 +82,9 @@ func (p *staticSpreadLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuot
 		absoluteSpread := midPrice * sl.SPREAD
 		levels = append(levels, api.Level{
 			// we always add here because it is only used in the context of selling so we always charge a higher price to include a spread
-			Price:  *model.NumberFromFloat(midPrice+absoluteSpread, p.orderConstraints.PricePrecision),
-			Amount: *model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, p.orderConstraints.VolumePrecision),
+			// use a large precision value here of 20 decimals so it can be reduced correctly later as needed if we flip the level
+			Price:  *model.NumberFromFloat(midPrice+absoluteSpread, 20),
+			Amount: *model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, 20),
 		})
 	}
 	return levels, nil

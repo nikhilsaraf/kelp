@@ -61,7 +61,7 @@ func makeSellStrategy(
 		ieif,
 		assetBase,
 		assetQuote,
-		makeStaticSpreadLevelProvider(config.Levels, config.AmountOfABase, offset, pf, orderConstraints),
+		makeStaticSpreadLevelProvider(config.Levels, config.AmountOfABase, offset, pf),
 		config.PriceTolerance,
 		config.AmountTolerance,
 		false,

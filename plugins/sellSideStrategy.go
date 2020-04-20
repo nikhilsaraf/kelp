@@ -152,6 +152,7 @@ func (s *sellSideStrategy) PreUpdate(maxAssetBase float64, maxAssetQuote float64
 		log.Printf("levels couldn't be loaded: %s\n", e)
 		return e
 	}
+	log.Printf("received levels for side = %s: %v", s.action, s.desiredLevels)
 	return nil
 }
 
@@ -375,8 +376,6 @@ func (s *sellSideStrategy) computeRemainderAmount(incrementalSellAmount float64,
 // createSellLevel returns offerPrice, hitCapacityLimit, op, error.
 func (s *sellSideStrategy) createSellLevel(index int, targetPrice model.Number, targetAmount model.Number) (*model.Number, bool, *txnbuild.ManageSellOffer, error) {
 	incrementalNativeAmountRaw := s.sdex.ComputeIncrementalNativeAmountRaw(true)
-	targetPrice = *model.NumberByCappingPrecision(&targetPrice, s.orderConstraints.PricePrecision)
-	targetAmount = *model.NumberByCappingPrecision(&targetAmount, s.orderConstraints.VolumePrecision)
 
 	hitCapacityLimit, op, e := s.placeOrderWithRetry(
 		targetPrice.AsFloat(),
