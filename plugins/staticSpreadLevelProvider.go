@@ -6,6 +6,7 @@ import (
 
 	"github.com/stellar/kelp/api"
 	"github.com/stellar/kelp/model"
+	"github.com/stellar/kelp/support/utils"
 )
 
 // StaticLevel represents a layer in the orderbook defined statically
@@ -82,9 +83,8 @@ func (p *staticSpreadLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuot
 		absoluteSpread := midPrice * sl.SPREAD
 		levels = append(levels, api.Level{
 			// we always add here because it is only used in the context of selling so we always charge a higher price to include a spread
-			// use a large precision value here of 20 decimals so it can be reduced correctly later as needed if we flip the level
-			Price:  *model.NumberFromFloat(midPrice+absoluteSpread, 20),
-			Amount: *model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, 20),
+			Price:  *model.NumberFromFloat(midPrice+absoluteSpread, utils.InternalLargePrecision),
+			Amount: *model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, utils.InternalLargePrecision),
 		})
 	}
 	return levels, nil

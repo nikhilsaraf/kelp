@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/kelp/api"
 	"github.com/stellar/kelp/model"
+	"github.com/stellar/kelp/support/utils"
 )
 
 // balancedLevelProvider provides levels based on an exponential curve wrt. the number of assets held in the account.
@@ -191,9 +192,8 @@ func (p *balancedLevelProvider) getLevel(maxAssetBase float64, maxAssetQuote flo
 	// since targetAmount needs to be less then what we've set above based on the inequality formula, let's reduce it by 5%
 	targetAmount *= (1 - p.getRandomSpread(p.minAmountSpread, p.maxAmountSpread))
 	level := api.Level{
-		// use a large precision value here of 20 decimals so it can be reduced correctly later as needed if we flip the level
-		Price:  *model.NumberFromFloat(targetPrice, 20),
-		Amount: *model.NumberFromFloat(targetAmount, 20),
+		Price:  *model.NumberFromFloat(targetPrice, utils.InternalLargePrecision),
+		Amount: *model.NumberFromFloat(targetAmount, utils.InternalLargePrecision),
 	}
 	return level, nil
 }

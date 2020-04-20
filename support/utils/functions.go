@@ -30,6 +30,10 @@ var NativeAsset = hProtocol.Asset{Type: Native}
 // SdexPrecision defines the number of decimals used in SDEX
 const SdexPrecision int8 = 7
 
+// InternalLargePrecision is the precision with which to represent numbers before sending to the exchange so the precision
+// can be reduced correctly later as needed if we flip these numbers
+const InternalLargePrecision int8 = 12
+
 // ByPrice implements sort.Interface for []horizon.Offer based on the price
 type ByPrice []hProtocol.Offer
 
