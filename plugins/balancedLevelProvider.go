@@ -27,8 +27,7 @@ type balancedLevelProvider struct {
 	carryoverInclusionProbability float64 // probability of including the carryover at a level that will be added
 	virtualBalanceBase            float64 // virtual balance to use so we can smoothen out the curve
 	virtualBalanceQuote           float64 // virtual balance to use so we can smoothen out the curve
-	orderConstraints              *model.OrderConstraints
-	shouldRefresh                 bool // boolean for whether to generate levels, starts true
+	shouldRefresh                 bool    // boolean for whether to generate levels, starts true
 
 	// precomputed before construction
 	randGen *rand.Rand
@@ -57,7 +56,6 @@ func makeBalancedLevelProvider(
 	carryoverInclusionProbability float64,
 	virtualBalanceBase float64,
 	virtualBalanceQuote float64,
-	orderConstraints *model.OrderConstraints,
 ) api.LevelProvider {
 	if minAmountSpread <= 0 {
 		log.Fatalf("minAmountSpread (%.7f) needs to be > 0 for the algorithm to work sustainably\n", minAmountSpread)
@@ -80,7 +78,7 @@ func makeBalancedLevelProvider(
 	shouldRefresh := true
 
 	return &balancedLevelProvider{
-		spread: spread,
+		spread:                        spread,
 		useMaxQuoteInTargetAmountCalc: useMaxQuoteInTargetAmountCalc,
 		minAmountSpread:               minAmountSpread,
 		maxAmountSpread:               maxAmountSpread,
@@ -92,7 +90,6 @@ func makeBalancedLevelProvider(
 		carryoverInclusionProbability: carryoverInclusionProbability,
 		virtualBalanceBase:            virtualBalanceBase,
 		virtualBalanceQuote:           virtualBalanceQuote,
-		orderConstraints:              orderConstraints,
 		randGen:                       randGen,
 		shouldRefresh:                 shouldRefresh,
 	}
@@ -194,8 +191,9 @@ func (p *balancedLevelProvider) getLevel(maxAssetBase float64, maxAssetQuote flo
 	// since targetAmount needs to be less then what we've set above based on the inequality formula, let's reduce it by 5%
 	targetAmount *= (1 - p.getRandomSpread(p.minAmountSpread, p.maxAmountSpread))
 	level := api.Level{
-		Price:  *model.NumberFromFloat(targetPrice, p.orderConstraints.PricePrecision),
-		Amount: *model.NumberFromFloat(targetAmount, p.orderConstraints.VolumePrecision),
+		// use a large precision value here of 20 decimals so it can be reduced correctly later as needed if we flip the level
+		Price:  *model.NumberFromFloat(targetPrice, 20),
+		Amount: *model.NumberFromFloat(targetAmount, 20),
 	}
 	return level, nil
 }
