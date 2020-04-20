@@ -2,7 +2,11 @@ package api
 
 import (
 	"fmt"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+	"golang.org/x/text/number"
 	"math"
+	"strings"
 
 	"github.com/stellar/go/build"
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -280,10 +284,15 @@ func ConvertTM2Operation(muts []build.TransactionMutator) []txnbuild.Operation {
 }
 
 func convertMOB2MSO(mob build.ManageOfferBuilder) *txnbuild.ManageSellOffer {
+	p := message.NewPrinter(language.English)
+	amtStr := p.Sprintf("%.7f", number.Decimal(float64(mob.MO.Amount)/math.Pow(10, 7), number.Precision(7)))
+	priceStr := p.Sprintf("%.11f", number.Decimal(float64(mob.MO.Price.N)/float64(mob.MO.Price.D), number.Precision(7)))
+	amtStr = strings.ReplaceAll(amtStr, ",", "")
+	priceStr = strings.ReplaceAll(priceStr, ",", "")
 	mso := &txnbuild.ManageSellOffer{
-		Amount:  fmt.Sprintf("%.7f", float64(mob.MO.Amount)/math.Pow(10, 7)),
+		Amount:  amtStr,
 		OfferID: int64(mob.MO.OfferId),
-		Price:   fmt.Sprintf("%.7f", float64(mob.MO.Price.N)/float64(mob.MO.Price.D)),
+		Price:   priceStr,
 	}
 	if mob.O.SourceAccount != nil {
 		mso.SourceAccount = &txnbuild.SimpleAccount{

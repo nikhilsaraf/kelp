@@ -27,7 +27,7 @@ const baseFee = 0.0000100
 const maxLumenTrust = math.MaxFloat64
 const maxPageLimit = 200
 
-var sdexOrderConstraints = model.MakeOrderConstraints(7, 7, 0.0000001)
+var sdexOrderConstraints = model.MakeOrderConstraints(13, 7, 0.0000001)
 
 // TODO we need a reasonable value for the resolution here (currently arbitrary 300000 from a test in horizon)
 const fetchTradesResolution = 300000
