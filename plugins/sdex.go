@@ -98,12 +98,12 @@ func MakeSDEX(
 		threadTracker:                 threadTracker,
 		operationalBuffer:             operationalBuffer,
 		operationalBufferNonNativePct: operationalBufferNonNativePct,
-		simMode:            simMode,
-		pair:               pair,
-		assetMap:           assetMap,
-		opFeeStroopsFn:     opFeeStroopsFn,
-		tradingOnSdex:      exchangeShim == nil,
-		ocOverridesHandler: MakeEmptyOrderConstraintsOverridesHandler(),
+		simMode:                       simMode,
+		pair:                          pair,
+		assetMap:                      assetMap,
+		opFeeStroopsFn:                opFeeStroopsFn,
+		tradingOnSdex:                 exchangeShim == nil,
+		ocOverridesHandler:            MakeEmptyOrderConstraintsOverridesHandler(),
 	}
 
 	if exchangeShim == nil {
@@ -349,6 +349,7 @@ func (sdex *SDEX) createModifySellOffer(offer *hProtocol.Offer, selling hProtoco
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("----> price=%.14f, stringPrice=%s, txnbuildPrice=%s", price, stringPrice, result.Price)
 
 	if offer != nil {
 		result.OfferID = offer.ID
@@ -372,7 +373,16 @@ func (sdex *SDEX) SubmitOps(ops []build.TransactionMutator, asyncCallback func(h
 
 // submitOps submits the passed in operations to the network in a single transaction. Asynchronous or not based on flag.
 func (sdex *SDEX) submitOps(opsOld []build.TransactionMutator, asyncCallback func(hash string, e error), asyncMode bool) error {
+	opsOldString := ""
+	for _, oo := range opsOld {
+		opsOldString += fmt.Sprintf("%v\n\n", oo)
+	}
 	ops := api.ConvertTM2Operation(opsOld)
+	opsString := ""
+	for _, oo := range ops {
+		opsString += fmt.Sprintf("%v\n\n", oo)
+	}
+	log.Printf("submitting ops\n\nold:\n%v\n\ntransformed:\n%v\n\n", opsOldString, opsString)
 
 	sdex.incrementSeqNum()
 	tx := txnbuild.Transaction{

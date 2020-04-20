@@ -216,6 +216,12 @@ func (t *Trader) update() bool {
 	}
 
 	opsOld, e := t.strategy.UpdateWithOps(t.buyingAOffers, t.sellingAOffers)
+	tmString1 := ""
+	for _, oo := range opsOld {
+		tmString1 += fmt.Sprintf("%v\n\n", oo)
+	}
+	log.Printf("UpdateWithOps produced TMs:\n%v\n\n", tmString1)
+
 	log.Printf("liabilities at the end of a call to UpdateWithOps\n")
 	t.sdex.IEIF().LogAllLiabilities(t.assetBase, t.assetQuote)
 	if e != nil {
@@ -235,10 +241,25 @@ func (t *Trader) update() bool {
 			return false
 		}
 	}
+	opsString1 := ""
+	for _, oo := range ops {
+		opsString1 += fmt.Sprintf("%v\n\n", oo)
+	}
+	log.Printf("ConvertTM2Operation transformed TMS to ops:\n%v\n\n", opsString1)
 
 	log.Printf("created %d operations to update existing offers\n", len(ops))
 	if len(ops) > 0 {
-		e = t.exchangeShim.SubmitOps(api.ConvertOperation2TM(ops), nil)
+		tms := api.ConvertOperation2TM(ops)
+		opsString := ""
+		for _, oo := range ops {
+			opsString += fmt.Sprintf("%v\n\n", oo)
+		}
+		tmString := ""
+		for _, oo := range tms {
+			tmString += fmt.Sprintf("%v\n\n", oo)
+		}
+		log.Printf("converted operation to TM before submitOps\n\nold:\n%v\n\ntransaction mutator:\n%v\n\n", opsString, tmString)
+		e = t.exchangeShim.SubmitOps(tms, nil)
 		if e != nil {
 			log.Println(e)
 			t.deleteAllOffers()
