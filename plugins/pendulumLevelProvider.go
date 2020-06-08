@@ -17,7 +17,7 @@ var price2LastPrice map[float64]float64 = map[float64]float64{}
 // the keys in price2LastPrice should have a larger precision than the exchange's market supports because we use the same map for
 // storing prices of both buy and sell orders which could hold prices at the same level and we want the map to allow both (instead
 // of rounding to the same offerPrice key)
-const offerPriceLargePrecision int8 = 15
+const offerPriceLargePrecision int8 = model.LargePrecision
 
 // pendulumLevelProvider provides levels based on the concept of a pendulum that swings from one side to another
 type pendulumLevelProvider struct {
@@ -165,6 +165,7 @@ func (p *pendulumLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuote fl
 		log.Printf("lastCursor == p.lastTradeCursor leaving lastTradeCursor=%v and lastTradePrice=%.10f", p.lastTradeCursor, p.lastTradePrice)
 	} else {
 		p.lastTradeCursor = lastCursor
+		// map to the price we got from the exciange using the exchange's precision for correct mapping
 		mapKey := model.NumberFromFloat(lastPrice, p.orderConstraints.PricePrecision)
 		printPrice2LastPriceMap()
 		_, p.lastTradePrice = getLastPriceFromMap(price2LastPrice, mapKey.AsFloat(), lastIsBuy)
@@ -204,8 +205,8 @@ func (p *pendulumLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuote fl
 		}
 
 		levels = append(levels, api.Level{
-			Price:  *model.NumberFromFloat(priceToUse, p.orderConstraints.PricePrecision),
-			Amount: *model.NumberFromFloat(p.amountBase, p.orderConstraints.VolumePrecision),
+			Price:  *model.NumberFromFloat(priceToUse, model.LargePrecision),
+			Amount: *model.NumberFromFloat(p.amountBase, model.LargePrecision),
 		})
 
 		// update last price map here

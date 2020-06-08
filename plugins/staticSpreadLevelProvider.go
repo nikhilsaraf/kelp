@@ -84,8 +84,8 @@ func (p *staticSpreadLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuot
 		absoluteSpread := midPrice * sl.SPREAD
 		levels = append(levels, api.Level{
 			// we always add here because it is only used in the context of selling so we always charge a higher price to include a spread
-			Price:  *model.NumberFromFloat(midPrice+absoluteSpread, p.orderConstraints.PricePrecision),
-			Amount: *model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, p.orderConstraints.VolumePrecision),
+			Price:  *model.NumberFromFloat(midPrice+absoluteSpread, model.LargePrecision),
+			Amount: *model.NumberFromFloat(sl.AMOUNT*p.amountOfBase, model.LargePrecision),
 		})
 	}
 	return levels, nil

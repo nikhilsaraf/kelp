@@ -18,9 +18,6 @@ import (
 	"github.com/stellar/kelp/support/utils"
 )
 
-// largePrecision is a large precision value for in-memory calculations
-const largePrecision = 15
-
 // BatchedExchange accumulates instructions that can be read out and processed in a batch-style later
 type BatchedExchange struct {
 	commands        []Command
@@ -380,8 +377,8 @@ func manageOffer2Order(mob *txnbuild.ManageSellOffer, baseAsset hProtocol.Asset,
 		return nil, fmt.Errorf("could not convert amount (%s) to float: %s", mob.Amount, e)
 	}
 
-	price := model.NumberFromFloat(priceFloat, largePrecision)
-	volume := model.NumberFromFloat(amountFloat, largePrecision)
+	price := model.NumberFromFloat(priceFloat, model.LargePrecision)
+	volume := model.NumberFromFloat(amountFloat, model.LargePrecision)
 	isBuy, e := utils.AssetOnlyCodeEquals(quoteAsset, mob.Selling)
 	if e != nil {
 		return nil, fmt.Errorf("could not compare assets, error: %s", e)
@@ -390,11 +387,9 @@ func manageOffer2Order(mob *txnbuild.ManageSellOffer, baseAsset hProtocol.Asset,
 		orderAction = model.OrderActionBuy
 		// TODO need to test price and volume conversions correctly
 		// volume calculation needs to happen first since it uses the non-inverted price when multiplying
-		volume = model.NumberFromFloat(volume.AsFloat()*price.AsFloat(), orderConstraints.VolumePrecision)
+		volume = model.NumberFromFloat(volume.AsFloat()*price.AsFloat(), model.LargePrecision)
 		price = model.InvertNumber(price)
 	}
-	volume = model.NumberByCappingPrecision(volume, orderConstraints.VolumePrecision)
-	price = model.NumberByCappingPrecision(price, orderConstraints.PricePrecision)
 
 	return &model.Order{
 		Pair: &model.TradingPair{

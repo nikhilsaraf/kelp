@@ -18,8 +18,8 @@ var NumberConstants = struct {
 	One:  NumberFromFloat(1.0, 16),
 }
 
-// InvertPrecision is the precision of the number after it is inverted
-const InvertPrecision = 15
+// LargePrecision is a large precision value for in-memory calculations
+const LargePrecision = 15
 
 // Number abstraction
 type Number struct {
@@ -134,7 +134,7 @@ func InvertNumber(n *Number) *Number {
 	if n == nil {
 		return nil
 	}
-	return NumberFromFloat(1.0/n.AsFloat(), InvertPrecision)
+	return NumberFromFloat(1.0/n.AsFloat(), LargePrecision)
 }
 
 // NumberByCappingPrecision returns a number with a precision that is at max the passed in precision

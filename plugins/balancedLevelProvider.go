@@ -80,7 +80,7 @@ func makeBalancedLevelProvider(
 	shouldRefresh := true
 
 	return &balancedLevelProvider{
-		spread: spread,
+		spread:                        spread,
 		useMaxQuoteInTargetAmountCalc: useMaxQuoteInTargetAmountCalc,
 		minAmountSpread:               minAmountSpread,
 		maxAmountSpread:               maxAmountSpread,
@@ -194,8 +194,8 @@ func (p *balancedLevelProvider) getLevel(maxAssetBase float64, maxAssetQuote flo
 	// since targetAmount needs to be less then what we've set above based on the inequality formula, let's reduce it by 5%
 	targetAmount *= (1 - p.getRandomSpread(p.minAmountSpread, p.maxAmountSpread))
 	level := api.Level{
-		Price:  *model.NumberFromFloat(targetPrice, p.orderConstraints.PricePrecision),
-		Amount: *model.NumberFromFloat(targetAmount, p.orderConstraints.VolumePrecision),
+		Price:  *model.NumberFromFloat(targetPrice, model.LargePrecision),
+		Amount: *model.NumberFromFloat(targetAmount, model.LargePrecision),
 	}
 	return level, nil
 }
