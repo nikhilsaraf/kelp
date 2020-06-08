@@ -179,8 +179,8 @@ func validateTrades(t *testing.T, pair model.TradingPair, trades []model.Trade) 
 			assert.Fail(t, "trade.OrderAction should be either OrderActionBuy or OrderActionSell: %v", trade.OrderAction)
 			return
 		}
-		minPrecision := math.Min(float64(trade.Price.Precision()), float64(trade.Volume.Precision()))
-		nonZeroCalculatedCost := trade.Price.AsFloat()*trade.Volume.AsFloat() > math.Pow(10, -minPrecision)
+		maxPrecision := math.Max(float64(trade.Price.Precision()), float64(trade.Volume.Precision()))
+		nonZeroCalculatedCost := trade.Price.AsFloat()*trade.Volume.AsFloat() > math.Pow(10, -maxPrecision)
 		if nonZeroCalculatedCost && !assert.True(t, trade.Cost.AsFloat() > 0, fmt.Sprintf("(price) %s x (volume) %s = (cost) %s", trade.Price.AsString(), trade.Volume.AsString(), trade.Cost.AsString())) {
 			return
 		}
