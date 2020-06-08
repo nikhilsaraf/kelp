@@ -378,21 +378,25 @@ func (s *sellSideStrategy) computeRemainderAmount(incrementalSellAmount float64,
 // createSellLevel returns offerPrice, hitCapacityLimit, op, error.
 func (s *sellSideStrategy) createSellLevel(index int, targetPrice model.Number, targetAmount model.Number) (*model.Number, bool, *txnbuild.ManageSellOffer, error) {
 	incrementalNativeAmountRaw := s.sdex.ComputeIncrementalNativeAmountRaw(true)
-	targetPrice = *model.NumberByCappingPrecision(&targetPrice, s.orderConstraints.PricePrecision)
-	targetAmount = *model.NumberByCappingPrecision(&targetAmount, s.orderConstraints.VolumePrecision)
 
+	// do not cap precision here because that will loose to much information when needed for the conversions inside the passed on placeOffer function, instead do it in the placeOffer function
+	capPrice := func(p float64) float64 { return model.FloatToFixed(p, s.orderConstraints.PricePrecision) }
+	capVolume := func(v float64) float64 { return model.FloatToFixed(v, s.orderConstraints.VolumePrecision) }
 	hitCapacityLimit, op, e := s.placeOrderWithRetry(
 		targetPrice.AsFloat(),
 		targetAmount.AsFloat(),
 		incrementalNativeAmountRaw,
 		func(price float64, amount float64, incrementalNativeAmountRaw float64) (*txnbuild.ManageSellOffer, error) {
-			priceLogged := price
-			amountLogged := amount
+			priceLogged := capPrice(price)
+			amountLogged := capVolume(amount)
 			if s.divideAmountByPrice {
-				priceLogged = 1 / price
-				amountLogged = amount * price
+				priceLogged = capPrice(1 / price)
+				amountLogged = capVolume(amount * price)
 			}
 			log.Printf("%s | create | new level=%d | priceQuote=%.8f | amtBase=%.8f\n", s.action, index+1, priceLogged, amountLogged)
+
+			price = capPrice(price)
+			amount = capVolume(amount)
 			return s.sdex.CreateSellOffer(*s.assetBase, *s.assetQuote, price, amount, incrementalNativeAmountRaw)
 		},
 		*s.assetBase,
@@ -448,34 +452,38 @@ func (s *sellSideStrategy) modifySellLevel(offers []hProtocol.Offer, index int, 
 		triggers = append(triggers, "oversell")
 	}
 
-	targetPrice = *model.NumberByCappingPrecision(&targetPrice, s.orderConstraints.PricePrecision)
-	targetAmount = *model.NumberByCappingPrecision(&targetAmount, s.orderConstraints.VolumePrecision)
+	// do not cap precision here because that will loose to much information when needed for the conversions inside the passed on placeOffer function, instead do it in the placeOffer function
+	capPrice := func(p float64) float64 { return model.FloatToFixed(p, s.orderConstraints.PricePrecision) }
+	capVolume := func(v float64) float64 { return model.FloatToFixed(v, s.orderConstraints.VolumePrecision) }
 	hitCapacityLimit, op, e := s.placeOrderWithRetry(
 		targetPrice.AsFloat(),
 		targetAmount.AsFloat(),
 		incrementalNativeAmountRaw,
 		func(price float64, amount float64, incrementalNativeAmountRaw float64) (*txnbuild.ManageSellOffer, error) {
-			priceLogged := price
-			amountLogged := amount
-			curPriceLogged := curPrice
-			lowestPriceLogged := lowestPrice
-			highestPriceLogged := highestPrice
-			curAmountLogged := curAmount
-			minAmountLogged := minAmount
-			maxAmountLogged := maxAmount
+			priceLogged := capPrice(price)
+			amountLogged := capVolume(amount)
+			curPriceLogged := capPrice(curPrice)
+			lowestPriceLogged := capPrice(lowestPrice)
+			highestPriceLogged := capPrice(highestPrice)
+			curAmountLogged := capVolume(curAmount)
+			minAmountLogged := capVolume(minAmount)
+			maxAmountLogged := capVolume(maxAmount)
 			if s.divideAmountByPrice {
-				priceLogged = 1 / price
-				amountLogged = amount * price
-				curPriceLogged = 1 / curPrice
-				curAmountLogged = curAmount * curPrice
-				minAmountLogged = minAmount * curPrice
-				maxAmountLogged = maxAmount * curPrice
+				priceLogged = capPrice(1 / price)
+				amountLogged = capVolume(amount * price)
+				curPriceLogged = capPrice(1 / curPrice)
+				curAmountLogged = capVolume(curAmount * curPrice)
+				minAmountLogged = capVolume(minAmount * curPrice)
+				maxAmountLogged = capVolume(maxAmount * curPrice)
 				// because we flip prices, the low and high need to be swapped here
-				lowestPriceLogged = 1 / highestPrice
-				highestPriceLogged = 1 / lowestPrice
+				lowestPriceLogged = capPrice(1 / highestPrice)
+				highestPriceLogged = capPrice(1 / lowestPrice)
 			}
 			log.Printf("%s | modify | old level=%d | new level = %d | triggers=%v | targetPriceQuote=%.8f | targetAmtBase=%.8f | curPriceQuote=%.8f | lowPriceQuote=%.8f | highPriceQuote=%.8f | curAmtBase=%.8f | minAmtBase=%.8f | maxAmtBase=%.8f\n",
 				s.action, index+1, newIndex+1, triggers, priceLogged, amountLogged, curPriceLogged, lowestPriceLogged, highestPriceLogged, curAmountLogged, minAmountLogged, maxAmountLogged)
+
+			price = capPrice(price)
+			amount = capVolume(amount)
 			return s.sdex.ModifySellOffer(offers[index], price, amount, incrementalNativeAmountRaw)
 		},
 		offers[index].Selling,

@@ -106,7 +106,7 @@ func (n Number) String() string {
 // NumberFromFloat makes a Number from a float
 func NumberFromFloat(f float64, precision int8) *Number {
 	return &Number{
-		value:     toFixed(f, precision),
+		value:     FloatToFixed(f, precision),
 		precision: precision,
 	}
 }
@@ -145,13 +145,14 @@ func NumberByCappingPrecision(n *Number, precision int8) *Number {
 	return n
 }
 
-func round(num float64) int64 {
-	return int64(num + math.Copysign(0.5, num))
-}
-
-func toFixed(num float64, precision int8) float64 {
+// FloatToFixed caps the precision of a float
+func FloatToFixed(num float64, precision int8) float64 {
 	output := math.Pow(10, float64(precision))
 	return float64(round(num*output)) / output
+}
+
+func round(num float64) int64 {
+	return int64(num + math.Copysign(0.5, num))
 }
 
 func minPrecision(n1 Number, n2 Number) int8 {
