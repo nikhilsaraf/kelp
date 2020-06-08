@@ -66,25 +66,25 @@ func (n Number) Negate() *Number {
 
 // Add returns a new Number after adding the passed in Number
 func (n Number) Add(n2 Number) *Number {
-	newPrecision := maxPrecision(n, n2)
+	newPrecision := minPrecision(n, n2)
 	return NumberFromFloat(n.AsFloat()+n2.AsFloat(), newPrecision)
 }
 
 // Subtract returns a new Number after subtracting out the passed in Number
 func (n Number) Subtract(n2 Number) *Number {
-	newPrecision := maxPrecision(n, n2)
+	newPrecision := minPrecision(n, n2)
 	return NumberFromFloat(n.AsFloat()-n2.AsFloat(), newPrecision)
 }
 
 // Multiply returns a new Number after multiplying with the passed in Number
 func (n Number) Multiply(n2 Number) *Number {
-	newPrecision := maxPrecision(n, n2)
+	newPrecision := minPrecision(n, n2)
 	return NumberFromFloat(n.AsFloat()*n2.AsFloat(), newPrecision)
 }
 
 // Divide returns a new Number after dividing by the passed in Number
 func (n Number) Divide(n2 Number) *Number {
-	newPrecision := maxPrecision(n, n2)
+	newPrecision := minPrecision(n, n2)
 	return NumberFromFloat(n.AsFloat()/n2.AsFloat(), newPrecision)
 }
 
@@ -155,8 +155,8 @@ func round(num float64) int64 {
 	return int64(num + math.Copysign(0.5, num))
 }
 
-func maxPrecision(n1 Number, n2 Number) int8 {
-	if n1.precision > n2.precision {
+func minPrecision(n1 Number, n2 Number) int8 {
+	if n1.precision < n2.precision {
 		return n1.precision
 	}
 	return n2.precision
