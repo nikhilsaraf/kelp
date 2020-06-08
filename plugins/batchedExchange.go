@@ -19,7 +19,7 @@ import (
 )
 
 // largePrecision is a large precision value for in-memory calculations
-const largePrecision = 10
+const largePrecision = 15
 
 // BatchedExchange accumulates instructions that can be read out and processed in a batch-style later
 type BatchedExchange struct {
