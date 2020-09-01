@@ -74,7 +74,7 @@ class App extends Component {
   }
 
   render() {
-    const enablePubnetBots = false;
+    const enablePubnetBots = true;
 
     let banner = (<div className={styles.banner}>
       <Button
