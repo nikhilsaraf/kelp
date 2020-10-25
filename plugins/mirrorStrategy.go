@@ -101,10 +101,23 @@ type mirrorStrategy struct {
 	mutex                                 *sync.Mutex
 	baseSurplus                           map[model.OrderAction]*assetSurplus // baseSurplus keeps track of any surplus we have of the base asset that needs to be offset on the backing exchange
 	db                                    *sql.DB
+	obThreadTracker                       *multithreading.ThreadTracker
+	bcThreadTracker                       *multithreading.ThreadTracker
 
 	// uninitialized
-	sellOnPrimaryBalanceCoordinator *balanceCoordinator
-	buyOnPrimaryBalanceCoordinator  *balanceCoordinator
+	obResult *orderbookResult
+	bcResult *backingBalanceResult
+}
+
+type orderbookResult struct {
+	ob  *model.OrderBook
+	err error
+}
+
+type backingBalanceResult struct {
+	baseBackingBalance  *model.Number
+	quoteBackingBalance *model.Number
+	err                 error
 }
 
 // ensure this implements api.Strategy
@@ -342,7 +355,9 @@ func makeMirrorStrategy(
 			model.OrderActionBuy:  makeAssetSurplus(),
 			model.OrderActionSell: makeAssetSurplus(),
 		},
-		db: db,
+		db:              db,
+		obThreadTracker: multithreading.MakeThreadTracker(),
+		bcThreadTracker: multithreading.MakeThreadTracker(),
 	}, nil
 }
 
@@ -353,38 +368,45 @@ func (s *mirrorStrategy) PruneExistingOffers(buyingAOffers []hProtocol.Offer, se
 
 // PreUpdate changes the strategy's state in prepration for the update
 func (s *mirrorStrategy) PreUpdate(maxAssetA float64, maxAssetB float64, trustA float64, trustB float64) error {
+	// reset values
+	s.obResult = nil
+	s.bcResult = nil
+
+	// load data from network asynchronously in multiple threads for use in UpdateWithOps
+	e := s.obThreadTracker.TriggerGoroutine(func(inputs []interface{}) {
+		// we want to fetch a few extra orders to account for potentially filtering out orders that don't meet the min base volume requirements
+		ordersToFetch := int32(s.orderbookDepth + numOrdersBufferMinVolumeFilter)
+		ob, e := s.exchange.GetOrderBook(s.backingPair, ordersToFetch)
+		// first set result values, then check for error
+		s.obResult = &orderbookResult{
+			ob:  ob,
+			err: e,
+		}
+		if e != nil {
+			return
+		}
+	}, nil)
+	if e != nil {
+		return fmt.Errorf("unable to trigger goroutine to fetch orderbook: %s", e)
+	}
+
 	// we don't care about or use balance coordinators if we are not offsetting trades
 	if !s.offsetTrades {
 		return nil
 	}
-
-	baseBackingBalance, quoteBackingBalance, e := s.getBackingBalances()
+	e = s.bcThreadTracker.TriggerGoroutine(func(inputs []interface{}) {
+		baseBackingBalance, quoteBackingBalance, e := s.getBackingBalances()
+		s.bcResult = &backingBalanceResult{
+			baseBackingBalance:  baseBackingBalance,
+			quoteBackingBalance: quoteBackingBalance,
+			err:                 e,
+		}
+		if e != nil {
+			return
+		}
+	}, nil)
 	if e != nil {
-		return fmt.Errorf("error while fetching backing balances: %s", e)
-	}
-
-	// buyOnPrimaryBalanceCoordinator is buying on the primary exchange and selling on the backing exchange
-	// primary asset being sold here is quote and backing asset being sold is base, so constrain on those
-	s.buyOnPrimaryBalanceCoordinator = &balanceCoordinator{
-		primaryBalance:     model.NumberFromFloat(maxAssetB, s.primaryConstraints.VolumePrecision),
-		placedPrimaryUnits: model.NumberConstants.Zero,
-		primaryAssetType:   "quote",
-		isPrimaryBuy:       true,
-		backingBalance:     baseBackingBalance,
-		placedBackingUnits: model.NumberConstants.Zero,
-		backingAssetType:   "base",
-	}
-
-	// sellOnPrimaryBalanceCoordinator is selling on the primary exchange and buying on the backing exchange
-	// primary asset being sold here is base and backing asset being sold is quote, so constrain on those
-	s.sellOnPrimaryBalanceCoordinator = &balanceCoordinator{
-		primaryBalance:     model.NumberFromFloat(maxAssetA, s.primaryConstraints.VolumePrecision),
-		placedPrimaryUnits: model.NumberConstants.Zero,
-		primaryAssetType:   "base",
-		isPrimaryBuy:       false,
-		backingBalance:     quoteBackingBalance,
-		placedBackingUnits: model.NumberConstants.Zero,
-		backingAssetType:   "quote",
+		return fmt.Errorf("unable to trigger goroutine to fetch backing balances for balanceCoordinators: %s", e)
 	}
 
 	return nil
@@ -415,16 +437,15 @@ func (s *mirrorStrategy) UpdateWithOps(
 	buyingAOffers []hProtocol.Offer,
 	sellingAOffers []hProtocol.Offer,
 ) ([]build.TransactionMutator, error) {
-	// we want to fetch a few extra orders to account for potentially filtering out orders that don't meet the min base volume requirements
-	ordersToFetch := int32(s.orderbookDepth + numOrdersBufferMinVolumeFilter)
-	ob, e := s.exchange.GetOrderBook(s.backingPair, ordersToFetch)
-	if e != nil {
-		return nil, e
+	// wait for network data to finish loading
+	s.obThreadTracker.Wait()
+	if s.obResult.err != nil {
+		return nil, fmt.Errorf("there was an error when loading the orderbook: %s", s.obResult.err)
 	}
 
 	// limit bids and asks to max 50 operations each because of Stellar's limit of 100 ops/tx
-	bids := ob.Bids()
-	asks := ob.Asks()
+	bids := s.obResult.ob.Bids()
+	asks := s.obResult.ob.Asks()
 	log.Printf("backing orderbook before transformations, including %d additional buffer orders:\n", numOrdersBufferMinVolumeFilter)
 	printBidsAndAsks(bids, asks)
 
@@ -452,13 +473,58 @@ func (s *mirrorStrategy) UpdateWithOps(
 	log.Printf("new orders to be placed (after transforming and filtering orders from backing exchange):\n")
 	printBidsAndAsks(bids, asks)
 
+	var buyOnPrimaryBalanceCoordinator *balanceCoordinator
+	var sellOnPrimaryBalanceCoordinator *balanceCoordinator
+	if s.offsetTrades {
+		s.bcThreadTracker.Wait()
+		if s.bcResult.err != nil {
+			return nil, fmt.Errorf("there was an error when loading the backing balances to build the balanceCoordinators: %s", s.bcResult.err)
+		}
+
+		// ***********************************************************************************************************************************
+		// we fetch balances from ieief, a possible network request. By this time we've loaded the balances into ieif. This is terrible
+		// because this breaks the abstraction as it requires knowledge of how the calling code works, at least for performance implications.
+		// ***********************************************************************************************************************************
+		maxAssetB, e := s.ieif.assetBalance(*s.quoteAsset)
+		if e != nil {
+			return nil, fmt.Errorf("unable to fetch quote balance from ieif: %s", e)
+		}
+		maxAssetA, e := s.ieif.assetBalance(*s.baseAsset)
+		if e != nil {
+			return nil, fmt.Errorf("unable to fetch base balance from ieif: %s", e)
+		}
+
+		// buyOnPrimaryBalanceCoordinator is buying on the primary exchange and selling on the backing exchange
+		// primary asset being sold here is quote and backing asset being sold is base, so constrain on those
+		buyOnPrimaryBalanceCoordinator = &balanceCoordinator{
+			primaryBalance:     model.NumberFromFloat(maxAssetB.Balance, s.primaryConstraints.VolumePrecision),
+			placedPrimaryUnits: model.NumberConstants.Zero,
+			primaryAssetType:   "quote",
+			isPrimaryBuy:       true,
+			backingBalance:     s.bcResult.baseBackingBalance,
+			placedBackingUnits: model.NumberConstants.Zero,
+			backingAssetType:   "base",
+		}
+
+		// sellOnPrimaryBalanceCoordinator is selling on the primary exchange and buying on the backing exchange
+		// primary asset being sold here is base and backing asset being sold is quote, so constrain on those
+		sellOnPrimaryBalanceCoordinator = &balanceCoordinator{
+			primaryBalance:     model.NumberFromFloat(maxAssetA.Balance, s.primaryConstraints.VolumePrecision),
+			placedPrimaryUnits: model.NumberConstants.Zero,
+			primaryAssetType:   "base",
+			isPrimaryBuy:       false,
+			backingBalance:     s.bcResult.quoteBackingBalance,
+			placedBackingUnits: model.NumberConstants.Zero,
+			backingAssetType:   "quote",
+		}
+	}
 	deleteBuyOps, buyOps, e := s.updateLevels(
 		buyingAOffers,
 		bids,
 		s.sdex.ModifyBuyOffer,
 		s.sdex.CreateBuyOffer,
 		true,
-		s.buyOnPrimaryBalanceCoordinator, // we sell on the backing exchange to offset trades that are bought on the primary exchange
+		buyOnPrimaryBalanceCoordinator, // we sell on the backing exchange to offset trades that are bought on the primary exchange
 	)
 	if e != nil {
 		return nil, e
@@ -471,7 +537,7 @@ func (s *mirrorStrategy) UpdateWithOps(
 		s.sdex.ModifySellOffer,
 		s.sdex.CreateSellOffer,
 		false,
-		s.sellOnPrimaryBalanceCoordinator, // we buy on the backing exchange to offset trades that are sold on the primary exchange
+		sellOnPrimaryBalanceCoordinator, // we buy on the backing exchange to offset trades that are sold on the primary exchange
 	)
 	if e != nil {
 		return nil, e
