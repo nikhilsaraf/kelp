@@ -49,7 +49,8 @@ type Trader struct {
 	startTime                      time.Time
 
 	// initialized runtime vars
-	deleteCycles int64
+	deleteCycles        int64
+	updateThreadTracker *multithreading.ThreadTracker
 
 	// uninitialized runtime vars
 	maxAssetA      float64
@@ -111,7 +112,8 @@ func MakeTrader(
 		metricsTracker:                 metricsTracker,
 		startTime:                      startTime,
 		// initialized runtime vars
-		deleteCycles: 0,
+		deleteCycles:        0,
+		updateThreadTracker: multithreading.MakeThreadTracker(),
 	}
 }
 
@@ -354,7 +356,22 @@ func isStateSynchronized(
 // time to update the order book and possibly readjust the offers
 // returns true if the update was successful, otherwise false
 func (t *Trader) update() bool {
-	e := t.synchronizeFetchBalancesOffersTrades()
+	var syncResult error
+	e := t.updateThreadTracker.TriggerGoroutine(func(inputs []interface{}) {
+		syncResult = t.synchronizeFetchBalancesOffersTrades()
+	}, nil)
+	if e != nil {
+		log.Println(e)
+		t.deleteAllOffers(false)
+		return false
+	}
+
+	// ***********************************************************************************************************************************
+	// TODO NS - this is what breaks compatibility because the mirror strategy does not use the values in t.maxAssetA and t.maxAssetB,
+	// which is what allows us to run this first. This will not work for other strategies and breaks abstractions.
+	// ***********************************************************************************************************************************
+	// strategy has a chance to set any state it needs
+	e = t.strategy.PreUpdate(t.maxAssetA, t.maxAssetB, t.trustAssetA, t.trustAssetB)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers(false)
@@ -380,10 +397,9 @@ func (t *Trader) update() bool {
 		return false
 	}
 
-	// strategy has a chance to set any state it needs
-	e = t.strategy.PreUpdate(t.maxAssetA, t.maxAssetB, t.trustAssetA, t.trustAssetB)
-	if e != nil {
-		log.Println(e)
+	t.updateThreadTracker.Wait()
+	if syncResult != nil {
+		log.Println(syncResult)
 		t.deleteAllOffers(false)
 		return false
 	}
