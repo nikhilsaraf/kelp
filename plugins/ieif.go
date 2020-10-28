@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 	"log"
+	"math"
 	"strings"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -80,6 +81,19 @@ func (ieif *IEIF) ResetCachedLiabilities(assetBase hProtocol.Asset, assetQuote h
 	if e != nil {
 		return fmt.Errorf("cannot load offers when trying to reset cached liabilities: %s", e)
 	}
+
+	return ieif.SetCachedLiabilities(offers, assetBase, assetQuote)
+}
+
+// SetCachedLiabilities sets the liabilities using the passed in offers
+func (ieif *IEIF) SetCachedLiabilities(offers []hProtocol.Offer, assetBase hProtocol.Asset, assetQuote hProtocol.Asset) error {
+	if _, ok := ieif.cachedLiabilities[assetBase]; ok {
+		delete(ieif.cachedLiabilities, assetBase)
+	}
+	if _, ok := ieif.cachedLiabilities[assetQuote]; ok {
+		delete(ieif.cachedLiabilities, assetQuote)
+	}
+
 	baseLiabilities, basePairLiabilities, e := ieif.pairLiabilities(offers, assetBase, assetQuote)
 	if e != nil {
 		return fmt.Errorf("could not get pairLiabilities for base asset: %s", e)
@@ -289,6 +303,15 @@ func (ieif *IEIF) _liabilities(offers []hProtocol.Offer, asset hProtocol.Asset, 
 // ResetCachedBalances resets the cached balances map
 func (ieif *IEIF) ResetCachedBalances() {
 	ieif.cachedBalances = map[hProtocol.Asset]api.Balance{}
+}
+
+// SetCachedBalance sets the cached balance for a given asset
+func (ieif *IEIF) SetCachedBalance(asset hProtocol.Asset, balance float64, operationalBufferNonNativePct float64) {
+	ieif.cachedBalances[asset] = api.Balance{
+		Balance: balance,
+		Trust:   math.MaxFloat64,
+		Reserve: balance * operationalBufferNonNativePct,
+	}
 }
 
 // GetAssetBalance is the exported version of assetBalance

@@ -384,22 +384,31 @@ func (t *Trader) update() bool {
 	}
 	log.Printf("orderConstraints for trading pair %s: %s", pair, t.exchangeShim.GetOrderConstraints(pair))
 
+	t.updateThreadTracker.Wait()
+	if syncResult != nil {
+		log.Println(syncResult)
+		t.deleteAllOffers(false)
+		return false
+	}
+
 	// TODO 2 streamline the request data instead of caching
 	// reset cache of balances for this update cycle to reduce redundant requests to calculate asset balances
-	t.sdex.IEIF().ResetCachedBalances()
+	// force set operational reserve to 0.0
+	t.sdex.IEIF().SetCachedBalance(t.assetBase, t.maxAssetA, 0.0)
+	t.sdex.IEIF().SetCachedBalance(t.assetQuote, t.maxAssetB, 0.0)
 	// reset and recompute cached liabilities for this update cycle
-	e = t.sdex.IEIF().ResetCachedLiabilities(t.assetBase, t.assetQuote)
-	log.Printf("liabilities after resetting\n")
-	t.sdex.IEIF().LogAllLiabilities(t.assetBase, t.assetQuote)
+	allOffers := append(t.buyingAOffers, append(t.sellingAOffers)...)
+	e = t.sdex.IEIF().SetCachedLiabilities(allOffers, t.assetBase, t.assetQuote)
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers(false)
 		return false
 	}
 
-	t.updateThreadTracker.Wait()
-	if syncResult != nil {
-		log.Println(syncResult)
+	log.Printf("liabilities after resetting\n")
+	t.sdex.IEIF().LogAllLiabilities(t.assetBase, t.assetQuote)
+	if e != nil {
+		log.Println(e)
 		t.deleteAllOffers(false)
 		return false
 	}
