@@ -26,7 +26,6 @@ import (
 	"github.com/stellar/kelp/plugins"
 	"github.com/stellar/kelp/support/database"
 	"github.com/stellar/kelp/support/logger"
-	"github.com/stellar/kelp/support/metrics"
 	"github.com/stellar/kelp/support/monitoring"
 	"github.com/stellar/kelp/support/networking"
 	"github.com/stellar/kelp/support/prefs"
@@ -143,6 +142,10 @@ func validateBotConfig(l logger.Logger, botConfig trader.BotConfig) {
 	}
 	validatePrecisionConfig(l, botConfig.IsTradingSdex(), botConfig.CentralizedVolumePrecisionOverride, "CENTRALIZED_VOLUME_PRECISION_OVERRIDE")
 	validatePrecisionConfig(l, botConfig.IsTradingSdex(), botConfig.CentralizedPricePrecisionOverride, "CENTRALIZED_PRICE_PRECISION_OVERRIDE")
+
+	if botConfig.SleepMode != "" && botConfig.SleepMode != trader.SleepModeBegin.String() && botConfig.SleepMode != trader.SleepModeEnd.String() {
+		logger.Fatal(l, fmt.Errorf("SLEEP_MODE needs to be set to either '%s' or '%s'", trader.SleepModeBegin, trader.SleepModeEnd))
+	}
 }
 
 func validatePrecisionConfig(l logger.Logger, isTradingSdex bool, precisionField *int8, name string) {
@@ -374,7 +377,7 @@ func makeStrategy(
 	options inputs,
 	threadTracker *multithreading.ThreadTracker,
 	db *sql.DB,
-	metricsTracker *metrics.MetricsTracker,
+	metricsTracker *plugins.MetricsTracker,
 ) api.Strategy {
 	// setting the temp hack variables for the sdex price feeds
 	e := plugins.SetPrivateSdexHack(client, plugins.MakeIEIF(true), network)
@@ -423,11 +426,11 @@ func makeBot(
 	fillTracker api.FillTracker,
 	threadTracker *multithreading.ThreadTracker,
 	options inputs,
-	metricsTracker *metrics.MetricsTracker,
+	metricsTracker *plugins.MetricsTracker,
 	botStart time.Time,
 ) *trader.Trader {
 	timeController := plugins.MakeIntervalTimeController(
-		time.Duration(botConfig.TickIntervalSeconds)*time.Second,
+		time.Duration(botConfig.TickIntervalMillis)*time.Millisecond,
 		botConfig.MaxTickDelayMillis,
 	)
 	submitMode, e := api.ParseSubmitMode(botConfig.SubmitMode)
@@ -515,6 +518,7 @@ func makeBot(
 		exchangeShim,
 		strategy,
 		timeController,
+		trader.ParseSleepMode(botConfig.SleepMode),
 		botConfig.SynchronizeStateLoadEnable,
 		botConfig.SynchronizeStateLoadMaxRetries,
 		fillTracker,
@@ -539,6 +543,16 @@ func convertDeprecatedBotConfigValues(l logger.Logger, botConfig trader.BotConfi
 	if botConfig.CentralizedMinBaseVolumeOverride == nil {
 		botConfig.CentralizedMinBaseVolumeOverride = botConfig.MinCentralizedBaseVolumeDeprecated
 	}
+
+	if botConfig.TickIntervalMillis != 0 && botConfig.TickIntervalSecondsDeprecated == 0 {
+		l.Infof("deprecation warning: cannot set both '%s' (deprecated) and '%s' in the trader config, using value from '%s'\n", "TICK_INTERVAL_SECONDS", "TICK_INTERVAL_MILLIS", "TICK_INTERVAL_MILLIS")
+	} else if botConfig.TickIntervalSecondsDeprecated != 0 {
+		l.Infof("deprecation warning: '%s' is deprecated, use the field '%s' in the trader config instead, see sample_trader.cfg as an example\n", "TICK_INTERVAL_SECONDS", "TICK_INTERVAL_MILLIS")
+	}
+	if botConfig.TickIntervalMillis == 0 {
+		botConfig.TickIntervalMillis = botConfig.TickIntervalSecondsDeprecated * 1000
+	}
+
 	return botConfig
 }
 
@@ -567,7 +581,7 @@ func runTradeCmd(options inputs) {
 
 	isTestnet := strings.Contains(botConfig.HorizonURL, "test") && botConfig.IsTradingSdex()
 
-	metricsTracker, e := metrics.MakeMetricsTracker(
+	metricsTracker, e := plugins.MakeMetricsTrackerCli(
 		userID,
 		deviceID,
 		amplitudeAPIKey,
@@ -578,11 +592,11 @@ func runTradeCmd(options inputs) {
 		env,
 		runtime.GOOS,
 		runtime.GOARCH,
-		"unknown_todo", // TODO DS Determine how to get GOARM.
+		goarm,
 		runtime.Version(),
 		guiVersionFlag,
 		*options.strategy,
-		botConfig.TickIntervalSeconds,
+		float64(botConfig.TickIntervalMillis)/1000,
 		botConfig.TradingExchange,
 		botConfig.TradingPair(),
 		*options.noHeaders, // disable metrics if the CLI specified no headers
@@ -609,7 +623,7 @@ func runTradeCmd(options inputs) {
 		logger.Fatal(l, fmt.Errorf("could not generate metrics tracker: %s", e))
 	}
 
-	e = metricsTracker.SendStartupEvent()
+	e = metricsTracker.SendStartupEvent(time.Now())
 	if e != nil {
 		logger.Fatal(l, fmt.Errorf("could not send startup event metric: %s", e))
 	}
@@ -871,7 +885,7 @@ func makeFillTracker(
 	db *sql.DB,
 	threadTracker *multithreading.ThreadTracker,
 	accountID string,
-	metricsTracker *metrics.MetricsTracker,
+	metricsTracker *plugins.MetricsTracker,
 ) api.FillTracker {
 	strategyFillHandlers, e := strategy.GetFillHandlers()
 	if e != nil {
@@ -966,7 +980,7 @@ func deleteAllOffersAndExit(
 	sdex *plugins.SDEX,
 	exchangeShim api.ExchangeShim,
 	threadTracker *multithreading.ThreadTracker,
-	metricsTracker *metrics.MetricsTracker,
+	metricsTracker *plugins.MetricsTracker,
 ) {
 	// synchronous event to guarantee execution. we want to know whenever we enter the delete all offers logic. this function
 	// waits for all threads to be synchronous, which is equivalent to sending synchronously. we use
