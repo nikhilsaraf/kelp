@@ -382,7 +382,7 @@ func isStateSynchronized(
 
 // time to update the order book and possibly readjust the offers
 // returns true if the update was successful, otherwise false
-func (t *Trader) update() bool {
+func (t *Trader) update() plugins.UpdateLoopResult {
 	// initialize counts of types of ops
 	numPruneOps := 0
 	numUpdateOpsDelete := 0
@@ -396,7 +396,13 @@ func (t *Trader) update() bool {
 	if e != nil {
 		log.Println(e)
 		t.deleteAllOffers(false)
-		return false
+		return plugins.UpdateLoopResult{
+			Success:            false,
+			NumPruneOps:        numPruneOps,
+			NumUpdateOpsDelete: numUpdateOpsDelete,
+			NumUpdateOpsUpdate: numUpdateOpsUpdate,
+			NumUpdateOpsCreate: numUpdateOpsCreate,
+		}
 	}
 
 	// ***********************************************************************************************************************************
@@ -427,7 +433,13 @@ func (t *Trader) update() bool {
 	if syncResult != nil {
 		log.Println(syncResult)
 		t.deleteAllOffers(false)
-		return false
+		return plugins.UpdateLoopResult{
+			Success:            false,
+			NumPruneOps:        numPruneOps,
+			NumUpdateOpsDelete: numUpdateOpsDelete,
+			NumUpdateOpsUpdate: numUpdateOpsUpdate,
+			NumUpdateOpsCreate: numUpdateOpsCreate,
+		}
 	}
 
 	// TODO 2 streamline the request data instead of caching
