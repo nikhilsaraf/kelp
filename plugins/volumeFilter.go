@@ -179,6 +179,7 @@ func volumeFilterFn(dailyOTB *VolumeFilterConfig, dailyTBBAccumulator *VolumeFil
 	if e != nil {
 		return nil, fmt.Errorf("could not compare offer and filter: %s", e)
 	}
+	log.Printf("isFilterApplicable: %v", isFilterApplicable)
 
 	if !isFilterApplicable {
 		// ignore filter so return op directly
@@ -190,6 +191,7 @@ func volumeFilterFn(dailyOTB *VolumeFilterConfig, dailyTBBAccumulator *VolumeFil
 	if e != nil {
 		return nil, fmt.Errorf("could not convert price (%s) to float: %s", op.Price, e)
 	}
+	log.Printf("offerPrice: %f", offerPrice)
 
 	// capPrice is used when computing amounts to sell or buy
 	// it's the offer price when capping on quote, and 1.0 when capping on base
@@ -197,20 +199,24 @@ func volumeFilterFn(dailyOTB *VolumeFilterConfig, dailyTBBAccumulator *VolumeFil
 	if lp.baseAssetCapInBaseUnits != nil {
 		capPrice = 1.0
 	}
+	log.Printf("capPrice: %f", capPrice)
 
 	offerAmount, e := strconv.ParseFloat(op.Amount, 64)
 	if e != nil {
 		return nil, fmt.Errorf("could not convert amount (%s) to float: %s", op.Amount, e)
 	}
+	log.Printf("offerAmount: %f", offerAmount)
 
 	// extracts from base or quote side, depending on filter
 	otb, tbb, cap, e := extractAllCaps(dailyOTB, dailyTBBAccumulator, lp)
 	if e != nil {
 		return nil, fmt.Errorf("could not extract filter inputs from filter: %s", e)
 	}
+	log.Printf("otb=%f, tbb=%f, cap=%f", otb, tbb, cap)
 
 	// if projected is under the cap, update the tbb and return the original op
 	projected := otb + tbb + offerAmount*capPrice
+	log.Printf("projected=%f", projected)
 	if projected <= cap {
 		dailyTBBAccumulator = updateTBB(dailyTBBAccumulator, offerAmount, offerPrice)
 		return op, nil
@@ -224,6 +230,7 @@ func volumeFilterFn(dailyOTB *VolumeFilterConfig, dailyTBBAccumulator *VolumeFil
 	// else, return nil
 	// TODO DS Determine whether this calculation works for a buy offer.
 	newOfferAmount := (cap - otb - tbb) / capPrice
+	log.Printf("newOfferAmount=%f", newOfferAmount)
 	if newOfferAmount <= 0 {
 		return nil, nil
 	}
